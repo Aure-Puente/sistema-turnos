@@ -1,5 +1,5 @@
 //Importaciones:
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Box,
   Drawer,
@@ -15,6 +15,7 @@ import {
   Stack,
   Chip,
   Paper,
+  Badge,
 } from "@mui/material";
 
 import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
@@ -26,6 +27,9 @@ import AssessmentRoundedIcon from "@mui/icons-material/AssessmentRounded";
 import PeopleRoundedIcon from "@mui/icons-material/PeopleRounded";
 import ChatRoundedIcon from "@mui/icons-material/ChatRounded";
 import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
+
+import { collection, onSnapshot, query } from "firebase/firestore";
+import { db } from "../../firebase/firebaseConfig";
 
 import logoHorizontal from "../../assets/images/logo-horizontal.png";
 
@@ -96,11 +100,16 @@ const allSections = [
 ];
 
 const Dashboard = () => {
+  const uid = localStorage.getItem("uid") || "";
   const rol = (localStorage.getItem("rol") || "BOX").toUpperCase();
   const nombreCompleto = localStorage.getItem("nombreCompleto") || "Usuario";
 
+  const chatSeenKey = `chatUltimaVista_${uid || "anonimo"}`;
+
   const [selectedSection, setSelectedSection] = useState("inicio");
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
+  const [latestChatDate, setLatestChatDate] = useState(null);
 
   const sections = useMemo(() => {
     return allSections.filter((section) => section.roles.includes(rol));
@@ -110,9 +119,77 @@ const Dashboard = () => {
     return sections.find((item) => item.id === selectedSection) || sections[0];
   }, [selectedSection, sections]);
 
+  useEffect(() => {
+    const q = query(collection(db, "chatMensajes"));
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const mensajes = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+
+        const ultimaVista = localStorage.getItem(chatSeenKey);
+        const ultimaVistaDate = ultimaVista ? new Date(ultimaVista) : null;
+
+        const mensajesOrdenados = [...mensajes].sort(
+          (a, b) =>
+            new Date(b.createdAtDate || 0) - new Date(a.createdAtDate || 0)
+        );
+
+        const ultimoMensaje = mensajesOrdenados[0];
+
+        if (ultimoMensaje?.createdAtDate) {
+          setLatestChatDate(ultimoMensaje.createdAtDate);
+        }
+
+        if (selectedSection === "chat") {
+          if (ultimoMensaje?.createdAtDate) {
+            localStorage.setItem(chatSeenKey, ultimoMensaje.createdAtDate);
+          }
+
+          setUnreadChatCount(0);
+          return;
+        }
+
+        const nuevos = mensajes.filter((mensaje) => {
+          if (!mensaje.createdAtDate) return false;
+          if (mensaje.uid === uid) return false;
+
+          const fechaMensaje = new Date(mensaje.createdAtDate);
+
+          if (!ultimaVistaDate) return true;
+
+          return fechaMensaje > ultimaVistaDate;
+        });
+
+        setUnreadChatCount(nuevos.length);
+      },
+      (error) => {
+        console.error("Error escuchando notificaciones de chat:", error);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [chatSeenKey, selectedSection, uid]);
+
+  useEffect(() => {
+    if (selectedSection === "chat" && latestChatDate) {
+      localStorage.setItem(chatSeenKey, latestChatDate);
+      setUnreadChatCount(0);
+    }
+  }, [selectedSection, latestChatDate, chatSeenKey]);
+
   const handleChangeSection = (id) => {
     setSelectedSection(id);
     setMobileOpen(false);
+
+    if (id === "chat") {
+      const fechaVista = latestChatDate || new Date().toISOString();
+      localStorage.setItem(chatSeenKey, fechaVista);
+      setUnreadChatCount(0);
+    }
   };
 
   const renderSection = () => {
@@ -184,6 +261,8 @@ const Dashboard = () => {
       <List sx={{ px: 1.5, py: 2, flex: 1 }}>
         {sections.map((item) => {
           const active = selectedSection === item.id;
+          const isChat = item.id === "chat";
+          const hasUnread = isChat && unreadChatCount > 0;
 
           return (
             <ListItemButton
@@ -196,6 +275,8 @@ const Dashboard = () => {
                 color: active ? "primary.main" : "#374151",
                 backgroundColor: active
                   ? "rgba(165, 4, 84, 0.09)"
+                  : hasUnread
+                  ? "rgba(165, 4, 84, 0.06)"
                   : "transparent",
                 "&:hover": {
                   backgroundColor: active
@@ -206,20 +287,44 @@ const Dashboard = () => {
             >
               <ListItemIcon
                 sx={{
-                  color: active ? "primary.main" : "#6b7280",
+                  color: active || hasUnread ? "primary.main" : "#6b7280",
                   minWidth: 42,
                 }}
               >
-                {item.icon}
+                {isChat ? (
+                  <Badge
+                    badgeContent={unreadChatCount}
+                    color="primary"
+                    invisible={!hasUnread}
+                    max={99}
+                  >
+                    {item.icon}
+                  </Badge>
+                ) : (
+                  item.icon
+                )}
               </ListItemIcon>
 
               <ListItemText
                 primary={item.title}
                 primaryTypographyProps={{
-                  fontWeight: active ? 800 : 600,
+                  fontWeight: active || hasUnread ? 800 : 600,
                   fontSize: "0.96rem",
                 }}
               />
+
+              {hasUnread && (
+                <Chip
+                  label="Nuevo"
+                  color="primary"
+                  size="small"
+                  sx={{
+                    height: 24,
+                    fontSize: "0.72rem",
+                    fontWeight: 800,
+                  }}
+                />
+              )}
             </ListItemButton>
           );
         })}
