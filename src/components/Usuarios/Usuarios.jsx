@@ -21,6 +21,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+
 import PersonAddAltRoundedIcon from "@mui/icons-material/PersonAddAltRounded";
 import PeopleRoundedIcon from "@mui/icons-material/PeopleRounded";
 import AdminPanelSettingsRoundedIcon from "@mui/icons-material/AdminPanelSettingsRounded";
@@ -30,14 +31,19 @@ import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import BlockRoundedIcon from "@mui/icons-material/BlockRounded";
+import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import PersonRemoveRoundedIcon from "@mui/icons-material/PersonRemoveRounded";
+
 import { initializeApp, getApps } from "firebase/app";
 import {
   createUserWithEmailAndPassword,
   getAuth,
   signOut,
 } from "firebase/auth";
+
 import {
   collection,
+  deleteDoc,
   doc,
   getDocs,
   query,
@@ -45,9 +51,10 @@ import {
   setDoc,
   updateDoc,
 } from "firebase/firestore";
+
 import { db, firebaseConfig } from "../../firebase/firebaseConfig";
 
-//JSX:
+//JS:
 const getSecondaryAuth = () => {
   const secondaryApp =
     getApps().find((app) => app.name === "Secondary") ||
@@ -101,9 +108,14 @@ const Usuarios = () => {
 
   const [usuarios, setUsuarios] = useState([]);
   const [open, setOpen] = useState(false);
+  const [openEliminar, setOpenEliminar] = useState(false);
+  const [usuarioAEliminar, setUsuarioAEliminar] = useState(null);
+
   const [loadingUsuarios, setLoadingUsuarios] = useState(false);
   const [loadingCrear, setLoadingCrear] = useState(false);
   const [loadingEstadoId, setLoadingEstadoId] = useState(null);
+  const [loadingEliminar, setLoadingEliminar] = useState(false);
+
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -294,6 +306,56 @@ const Usuarios = () => {
       setError("No se pudo cambiar el estado del usuario.");
     } finally {
       setLoadingEstadoId(null);
+    }
+  };
+
+  const handleAbrirEliminar = (usuario) => {
+    setError("");
+    setSuccess("");
+
+    if (usuario.id === uidActual) {
+      setError("No podés eliminar tu propio usuario.");
+      return;
+    }
+
+    setUsuarioAEliminar(usuario);
+    setOpenEliminar(true);
+  };
+
+  const handleCerrarEliminar = () => {
+    if (loadingEliminar) return;
+
+    setOpenEliminar(false);
+    setUsuarioAEliminar(null);
+  };
+
+  const handleEliminarUsuario = async () => {
+    try {
+      setError("");
+      setSuccess("");
+
+      if (!usuarioAEliminar) return;
+
+      if (usuarioAEliminar.id === uidActual) {
+        setError("No podés eliminar tu propio usuario.");
+        setOpenEliminar(false);
+        setUsuarioAEliminar(null);
+        return;
+      }
+
+      setLoadingEliminar(true);
+
+      await deleteDoc(doc(db, "usuarios", usuarioAEliminar.id));
+
+      setSuccess("Usuario eliminado correctamente.");
+      setOpenEliminar(false);
+      setUsuarioAEliminar(null);
+      await cargarUsuarios();
+    } catch (error) {
+      console.error("Error eliminando usuario:", error);
+      setError("No se pudo eliminar el usuario.");
+    } finally {
+      setLoadingEliminar(false);
     }
   };
 
@@ -888,6 +950,40 @@ const Usuarios = () => {
                         "Activar"
                       )}
                     </Button>
+
+                    <Tooltip
+                      title={
+                        esUsuarioActual
+                          ? "No podés eliminar tu propio usuario"
+                          : "Eliminar usuario"
+                      }
+                      arrow
+                    >
+                      <span>
+                        <IconButton
+                          onClick={() => handleAbrirEliminar(usuario)}
+                          disabled={esUsuarioActual || loadingEliminar}
+                          sx={{
+                            width: 34,
+                            height: 34,
+                            borderRadius: "12px",
+                            color: "#dc2626",
+                            border: "1px solid rgba(220, 38, 38, 0.16)",
+                            backgroundColor: "rgba(220, 38, 38, 0.045)",
+                            "&:hover": {
+                              backgroundColor: "rgba(220, 38, 38, 0.08)",
+                            },
+                            "&.Mui-disabled": {
+                              color: "#cbd5e1",
+                              borderColor: "rgba(15, 23, 42, 0.08)",
+                              backgroundColor: "#f8fafc",
+                            },
+                          }}
+                        >
+                          <DeleteOutlineRoundedIcon sx={{ fontSize: 20 }} />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
                   </Stack>
                 </Box>
               );
@@ -1143,6 +1239,161 @@ const Usuarios = () => {
               <CircularProgress size={22} color="inherit" />
             ) : (
               "Crear usuario"
+            )}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={openEliminar}
+        onClose={handleCerrarEliminar}
+        fullWidth
+        maxWidth="xs"
+        PaperProps={{
+          sx: {
+            borderRadius: { xs: "22px", sm: "26px" },
+            width: "100%",
+            boxShadow: "0 24px 70px rgba(15, 23, 42, 0.20)",
+            border: "1px solid rgba(15, 23, 42, 0.08)",
+            overflow: "hidden",
+          },
+        }}
+        BackdropProps={{
+          sx: {
+            backgroundColor: "rgba(15, 23, 42, 0.32)",
+            backdropFilter: "blur(3px)",
+          },
+        }}
+      >
+        <Box
+          sx={{
+            px: { xs: 2.5, sm: 3 },
+            pt: { xs: 2.6, sm: 3 },
+            pb: 1,
+            textAlign: "center",
+          }}
+        >
+          <Box
+            sx={{
+              width: 58,
+              height: 58,
+              borderRadius: "20px",
+              backgroundColor: "rgba(220, 38, 38, 0.08)",
+              color: "#dc2626",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              mx: "auto",
+              mb: 1.8,
+            }}
+          >
+            <PersonRemoveRoundedIcon sx={{ fontSize: 32 }} />
+          </Box>
+
+          <DialogTitle
+            sx={{
+              p: 0,
+              color: "#111827",
+              fontWeight: 800,
+              fontSize: {
+                xs: "1.28rem",
+                sm: "1.38rem",
+              },
+              letterSpacing: "-0.3px",
+            }}
+          >
+            Eliminar usuario
+          </DialogTitle>
+
+          <DialogContent
+            sx={{
+              p: 0,
+              mt: 1,
+            }}
+          >
+            <Typography
+              sx={{
+                color: "#64748b",
+                fontSize: "0.96rem",
+                lineHeight: 1.5,
+                fontWeight: 500,
+              }}
+            >
+              ¿Querés eliminar a{" "}
+              <Box component="span" sx={{ color: "#111827", fontWeight: 750 }}>
+                {usuarioAEliminar?.nombreCompleto || "este usuario"}
+              </Box>
+              ?
+            </Typography>
+
+            <Typography
+              sx={{
+                color: "#94a3b8",
+                fontSize: "0.84rem",
+                lineHeight: 1.45,
+                fontWeight: 500,
+                mt: 1,
+              }}
+            >
+              Se eliminará su perfil del sistema. Para quitarlo también de
+              Firebase Authentication necesitás hacerlo desde backend/Admin SDK.
+            </Typography>
+          </DialogContent>
+        </Box>
+
+        <DialogActions
+          sx={{
+            px: { xs: 2.5, sm: 3 },
+            pb: { xs: 2.5, sm: 3 },
+            pt: 2,
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 1.2,
+          }}
+        >
+          <Button
+            onClick={handleCerrarEliminar}
+            disabled={loadingEliminar}
+            sx={{
+              height: 46,
+              borderRadius: "15px",
+              fontWeight: 750,
+              textTransform: "none",
+              color: "#475569",
+              backgroundColor: "#f1f5f9",
+              "&:hover": {
+                backgroundColor: "#e2e8f0",
+              },
+            }}
+          >
+            Cancelar
+          </Button>
+
+          <Button
+            onClick={handleEliminarUsuario}
+            variant="contained"
+            disabled={loadingEliminar}
+            sx={{
+              height: 46,
+              borderRadius: "15px",
+              fontWeight: 800,
+              textTransform: "none",
+              backgroundColor: "#dc2626",
+              boxShadow: "none",
+              "&:hover": {
+                backgroundColor: "#b91c1c",
+                boxShadow: "none",
+              },
+              "&.Mui-disabled": {
+                backgroundColor: "rgba(220, 38, 38, 0.45)",
+                color: "#ffffff",
+              },
+            }}
+          >
+            {loadingEliminar ? (
+              <CircularProgress size={22} color="inherit" />
+            ) : (
+              "Eliminar"
             )}
           </Button>
         </DialogActions>

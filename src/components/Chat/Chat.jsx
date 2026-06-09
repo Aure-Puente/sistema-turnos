@@ -13,11 +13,13 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import ChatRoundedIcon from "@mui/icons-material/ChatRounded";
 import ForumRoundedIcon from "@mui/icons-material/ForumRounded";
 import AdminPanelSettingsRoundedIcon from "@mui/icons-material/AdminPanelSettingsRounded";
 import MeetingRoomRoundedIcon from "@mui/icons-material/MeetingRoomRounded";
+
 import {
   addDoc,
   collection,
@@ -25,6 +27,7 @@ import {
   query,
   serverTimestamp,
 } from "firebase/firestore";
+
 import { db } from "../../firebase/firebaseConfig";
 
 //JSX:
@@ -143,12 +146,17 @@ const Chat = () => {
         justifyContent="space-between"
         alignItems={{ xs: "flex-start", md: "center" }}
         spacing={2}
-        sx={{ mb: { xs: 2.5, md: 3 } }}
+        sx={{
+          mb: {
+            xs: 2,
+            md: 2.4,
+          },
+        }}
       >
         <Box sx={{ minWidth: 0 }}>
           <Typography
             sx={{
-              fontSize: { xs: "1.55rem", sm: "1.7rem", md: "1.9rem" },
+              fontSize: { xs: "1.5rem", sm: "1.65rem", md: "1.82rem" },
               fontWeight: 800,
               color: "#111827",
               lineHeight: 1.12,
@@ -161,10 +169,10 @@ const Chat = () => {
           <Typography
             sx={{
               color: "#64748b",
-              mt: 0.7,
-              fontSize: { xs: "0.95rem", md: "1rem" },
+              mt: 0.55,
+              fontSize: { xs: "0.94rem", md: "0.98rem" },
               fontWeight: 500,
-              lineHeight: 1.45,
+              lineHeight: 1.4,
             }}
           >
             Sala común para administradores y boxes de atención.
@@ -224,13 +232,17 @@ const Chat = () => {
         elevation={0}
         sx={{
           height: {
-            xs: "calc(100vh - 150px)",
-            sm: "calc(100vh - 155px)",
-            md: "calc(100vh - 165px)",
+            xs: "calc(100dvh - 225px)",
+            sm: "calc(100dvh - 225px)",
+            md: "calc(100dvh - 240px)",
+            lg: "calc(100dvh - 235px)",
           },
           minHeight: {
-            xs: 520,
-            md: 560,
+            xs: 430,
+            md: 455,
+          },
+          maxHeight: {
+            md: "720px",
           },
           borderRadius: { xs: "22px", md: "26px" },
           border: "1px solid rgba(15, 23, 42, 0.08)",
@@ -243,10 +255,11 @@ const Chat = () => {
       >
         <Box
           sx={{
-            px: { xs: 2.2, sm: 2.6, md: 3 },
-            py: { xs: 1.9, md: 2.2 },
+            px: { xs: 2, sm: 2.4, md: 2.6 },
+            py: { xs: 1.6, md: 1.8 },
             borderBottom: "1px solid rgba(15, 23, 42, 0.08)",
             backgroundColor: "#ffffff",
+            flexShrink: 0,
           }}
         >
           <Stack
@@ -255,11 +268,16 @@ const Chat = () => {
             justifyContent="space-between"
             spacing={2}
           >
-            <Stack direction="row" spacing={1.4} alignItems="center" sx={{ minWidth: 0 }}>
+            <Stack
+              direction="row"
+              spacing={1.3}
+              alignItems="center"
+              sx={{ minWidth: 0 }}
+            >
               <Box
                 sx={{
-                  width: { xs: 42, md: 46 },
-                  height: { xs: 42, md: 46 },
+                  width: { xs: 40, md: 44 },
+                  height: { xs: 40, md: 44 },
                   borderRadius: "16px",
                   backgroundColor: "rgba(165, 4, 84, 0.07)",
                   color: "primary.main",
@@ -269,7 +287,7 @@ const Chat = () => {
                   flexShrink: 0,
                 }}
               >
-                <ForumRoundedIcon sx={{ fontSize: { xs: 24, md: 26 } }} />
+                <ForumRoundedIcon sx={{ fontSize: { xs: 23, md: 25 } }} />
               </Box>
 
               <Box sx={{ minWidth: 0 }}>
@@ -278,7 +296,7 @@ const Chat = () => {
                   sx={{
                     fontWeight: 800,
                     color: "#111827",
-                    fontSize: { xs: "1.1rem", md: "1.22rem" },
+                    fontSize: { xs: "1.05rem", md: "1.16rem" },
                     letterSpacing: "-0.2px",
                     lineHeight: 1.2,
                   }}
@@ -290,9 +308,9 @@ const Chat = () => {
                   noWrap
                   sx={{
                     color: "#64748b",
-                    fontSize: { xs: "0.84rem", md: "0.92rem" },
+                    fontSize: { xs: "0.82rem", md: "0.88rem" },
                     fontWeight: 500,
-                    mt: 0.2,
+                    mt: 0.15,
                   }}
                 >
                   Mensajes compartidos del equipo
@@ -317,8 +335,9 @@ const Chat = () => {
         <Box
           sx={{
             flex: 1,
+            minHeight: 0,
             overflowY: "auto",
-            p: { xs: 2, md: 2.8 },
+            p: { xs: 1.8, md: 2.3 },
             background:
               "linear-gradient(180deg, #f8fafc 0%, #fafafa 100%)",
           }}
@@ -327,7 +346,7 @@ const Chat = () => {
             <Box
               sx={{
                 height: "100%",
-                minHeight: 280,
+                minHeight: 250,
                 display: "flex",
                 justifyContent: "center",
                 alignItems: "center",
@@ -339,7 +358,7 @@ const Chat = () => {
             <Box
               sx={{
                 height: "100%",
-                minHeight: 320,
+                minHeight: 280,
                 display: "flex",
                 justifyContent: "center",
                 alignItems: "center",
@@ -350,8 +369,8 @@ const Chat = () => {
               <Box>
                 <Box
                   sx={{
-                    width: 74,
-                    height: 74,
+                    width: 70,
+                    height: 70,
                     borderRadius: "24px",
                     backgroundColor: "rgba(165, 4, 84, 0.07)",
                     color: "primary.main",
@@ -362,12 +381,12 @@ const Chat = () => {
                     mb: 2,
                   }}
                 >
-                  <ChatRoundedIcon sx={{ fontSize: 40 }} />
+                  <ChatRoundedIcon sx={{ fontSize: 38 }} />
                 </Box>
 
                 <Typography
                   sx={{
-                    fontSize: { xs: "1.25rem", md: "1.4rem" },
+                    fontSize: { xs: "1.22rem", md: "1.34rem" },
                     fontWeight: 800,
                     color: "#111827",
                     letterSpacing: "-0.3px",
@@ -389,7 +408,7 @@ const Chat = () => {
               </Box>
             </Box>
           ) : (
-            <Stack spacing={1.5}>
+            <Stack spacing={1.35}>
               {mensajes.map((mensaje) => {
                 const esPropio = mensaje.uid === uid;
                 const mensajeRol = (mensaje.rol || "BOX").toUpperCase();
@@ -421,10 +440,10 @@ const Chat = () => {
                       <Avatar
                         sx={{
                           bgcolor: esPropio ? "primary.main" : "#475569",
-                          width: { xs: 34, md: 38 },
-                          height: { xs: 34, md: 38 },
+                          width: { xs: 34, md: 36 },
+                          height: { xs: 34, md: 36 },
                           fontWeight: 800,
-                          fontSize: "0.82rem",
+                          fontSize: "0.8rem",
                           boxShadow: esPropio
                             ? "0 10px 22px rgba(165, 4, 84, 0.16)"
                             : "none",
@@ -439,14 +458,18 @@ const Chat = () => {
                           spacing={0.8}
                           justifyContent={esPropio ? "flex-end" : "flex-start"}
                           alignItems="center"
-                          sx={{ mb: 0.45 }}
+                          sx={{ mb: 0.4 }}
                         >
-                          <Tooltip title={esPropio ? nombreCompleto : mensajeNombre} arrow placement="top">
+                          <Tooltip
+                            title={esPropio ? nombreCompleto : mensajeNombre}
+                            arrow
+                            placement="top"
+                          >
                             <Typography
                               noWrap
                               sx={{
                                 color: "#64748b",
-                                fontSize: "0.78rem",
+                                fontSize: "0.76rem",
                                 fontWeight: 650,
                                 maxWidth: { xs: 150, sm: 220 },
                               }}
@@ -485,8 +508,8 @@ const Chat = () => {
                         <Paper
                           elevation={0}
                           sx={{
-                            px: { xs: 1.55, md: 1.8 },
-                            py: { xs: 1.15, md: 1.25 },
+                            px: { xs: 1.45, md: 1.65 },
+                            py: { xs: 1.05, md: 1.12 },
                             borderRadius: esPropio
                               ? "18px 18px 6px 18px"
                               : "18px 18px 18px 6px",
@@ -506,8 +529,8 @@ const Chat = () => {
                             sx={{
                               whiteSpace: "pre-wrap",
                               wordBreak: "break-word",
-                              fontSize: { xs: "0.94rem", md: "0.98rem" },
-                              lineHeight: 1.48,
+                              fontSize: { xs: "0.94rem", md: "0.96rem" },
+                              lineHeight: 1.45,
                               fontWeight: 450,
                             }}
                           >
@@ -518,8 +541,8 @@ const Chat = () => {
                         <Typography
                           sx={{
                             color: "#94a3b8",
-                            fontSize: "0.72rem",
-                            mt: 0.45,
+                            fontSize: "0.7rem",
+                            mt: 0.4,
                             textAlign: esPropio ? "right" : "left",
                             fontWeight: 500,
                           }}
@@ -541,15 +564,16 @@ const Chat = () => {
 
         <Box
           sx={{
-            p: { xs: 1.7, sm: 2, md: 2.2 },
+            p: { xs: 1.5, sm: 1.7, md: 1.9 },
             backgroundColor: "#ffffff",
+            flexShrink: 0,
           }}
         >
-          <Stack direction="row" spacing={1.2} alignItems="flex-end">
+          <Stack direction="row" spacing={1.1} alignItems="flex-end">
             <TextField
               fullWidth
               multiline
-              maxRows={4}
+              maxRows={3}
               placeholder="Escribí un mensaje..."
               value={texto}
               onChange={(e) => setTexto(e.target.value)}
@@ -557,10 +581,10 @@ const Chat = () => {
               disabled={enviando}
               sx={{
                 "& .MuiOutlinedInput-root": {
-                  minHeight: 52,
+                  minHeight: 50,
                   borderRadius: "18px",
                   backgroundColor: "#f8fafc",
-                  fontSize: "0.96rem",
+                  fontSize: "0.95rem",
                   pr: 1,
                   "& fieldset": {
                     borderColor: "rgba(15, 23, 42, 0.10)",
@@ -580,9 +604,9 @@ const Chat = () => {
               onClick={handleEnviar}
               disabled={enviando || !texto.trim()}
               sx={{
-                width: { xs: 50, md: 54 },
-                height: { xs: 50, md: 54 },
-                borderRadius: "18px",
+                width: { xs: 48, md: 50 },
+                height: { xs: 48, md: 50 },
+                borderRadius: "17px",
                 color: "#ffffff",
                 backgroundColor: "primary.main",
                 flexShrink: 0,
@@ -599,7 +623,7 @@ const Chat = () => {
               }}
             >
               {enviando ? (
-                <CircularProgress size={22} color="inherit" />
+                <CircularProgress size={21} color="inherit" />
               ) : (
                 <SendRoundedIcon />
               )}
