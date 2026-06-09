@@ -1,8 +1,8 @@
-import React, { useEffect, useRef, useState } from "react";
+//Importaciones:
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Avatar,
   Box,
-  Button,
   Chip,
   CircularProgress,
   Divider,
@@ -10,12 +10,14 @@ import {
   Paper,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
-
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import ChatRoundedIcon from "@mui/icons-material/ChatRounded";
-
+import ForumRoundedIcon from "@mui/icons-material/ForumRounded";
+import AdminPanelSettingsRoundedIcon from "@mui/icons-material/AdminPanelSettingsRounded";
+import MeetingRoomRoundedIcon from "@mui/icons-material/MeetingRoomRounded";
 import {
   addDoc,
   collection,
@@ -23,13 +25,34 @@ import {
   query,
   serverTimestamp,
 } from "firebase/firestore";
-
 import { db } from "../../firebase/firebaseConfig";
 
+//JSX:
 const ordenarMensajes = (mensajes) => {
   return [...mensajes].sort(
     (a, b) => new Date(a.createdAtDate || 0) - new Date(b.createdAtDate || 0)
   );
+};
+
+const getInitials = (name = "Usuario") => {
+  const parts = name.trim().split(" ").filter(Boolean).slice(0, 2);
+
+  if (!parts.length) return "U";
+
+  return parts.map((part) => part[0]?.toUpperCase()).join("");
+};
+
+const getRoleLabel = (rol = "BOX") => {
+  return rol?.toUpperCase() === "ADMIN" ? "Administrador" : "Box";
+};
+
+const formatMessageTime = (date) => {
+  if (!date) return "";
+
+  return new Date(date).toLocaleTimeString("es-AR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 };
 
 const Chat = () => {
@@ -37,13 +60,14 @@ const Chat = () => {
 
   const uid = localStorage.getItem("uid") || "";
   const nombreCompleto = localStorage.getItem("nombreCompleto") || "Usuario";
-  const rol = localStorage.getItem("rol") || "BOX";
-  const boxNombre = localStorage.getItem("boxNombre") || "";
+  const rol = (localStorage.getItem("rol") || "BOX").toUpperCase();
 
   const [mensajes, setMensajes] = useState([]);
   const [texto, setTexto] = useState("");
   const [loading, setLoading] = useState(true);
   const [enviando, setEnviando] = useState(false);
+
+  const rolLabel = useMemo(() => getRoleLabel(rol), [rol]);
 
   useEffect(() => {
     const q = query(collection(db, "chatMensajes"));
@@ -87,7 +111,6 @@ const Chat = () => {
         uid,
         nombreCompleto,
         rol,
-        boxNombre,
         createdAt: serverTimestamp(),
         createdAtDate: ahora.toISOString(),
       });
@@ -108,48 +131,111 @@ const Chat = () => {
   };
 
   return (
-    <Box>
+    <Box
+      sx={{
+        width: "100%",
+        maxWidth: 1480,
+        mx: "auto",
+      }}
+    >
       <Stack
         direction={{ xs: "column", md: "row" }}
         justifyContent="space-between"
         alignItems={{ xs: "flex-start", md: "center" }}
         spacing={2}
-        sx={{ mb: 3 }}
+        sx={{ mb: { xs: 2.5, md: 3 } }}
       >
-        <Box>
+        <Box sx={{ minWidth: 0 }}>
           <Typography
             sx={{
-              fontSize: { xs: "1.7rem", md: "2rem" },
-              fontWeight: 900,
-              color: "primary.main",
-              lineHeight: 1.1,
+              fontSize: { xs: "1.55rem", sm: "1.7rem", md: "1.9rem" },
+              fontWeight: 800,
+              color: "#111827",
+              lineHeight: 1.12,
+              letterSpacing: "-0.7px",
             }}
           >
             Chat interno
           </Typography>
 
-          <Typography sx={{ color: "#6b7280", mt: 0.8 }}>
-            Sala común para administradores y boxes.
+          <Typography
+            sx={{
+              color: "#64748b",
+              mt: 0.7,
+              fontSize: { xs: "0.95rem", md: "1rem" },
+              fontWeight: 500,
+              lineHeight: 1.45,
+            }}
+          >
+            Sala común para administradores y boxes de atención.
           </Typography>
         </Box>
 
-        <Chip
-          icon={<ChatRoundedIcon />}
-          label={`${mensajes.length} mensajes`}
-          color="primary"
-          variant="outlined"
-          sx={{ fontWeight: 800 }}
-        />
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          <Chip
+            icon={<ChatRoundedIcon />}
+            label={`${mensajes.length} mensajes`}
+            variant="outlined"
+            sx={{
+              height: 34,
+              borderRadius: "999px",
+              fontWeight: 700,
+              color: mensajes.length > 0 ? "primary.main" : "#64748b",
+              borderColor:
+                mensajes.length > 0
+                  ? "rgba(165, 4, 84, 0.20)"
+                  : "rgba(15, 23, 42, 0.12)",
+              backgroundColor:
+                mensajes.length > 0 ? "rgba(165, 4, 84, 0.04)" : "#ffffff",
+              "& .MuiChip-icon": {
+                color: mensajes.length > 0 ? "primary.main" : "#64748b",
+                fontSize: 18,
+              },
+            }}
+          />
+
+          <Chip
+            icon={
+              rol === "ADMIN" ? (
+                <AdminPanelSettingsRoundedIcon />
+              ) : (
+                <MeetingRoomRoundedIcon />
+              )
+            }
+            label={rolLabel}
+            variant="outlined"
+            sx={{
+              height: 34,
+              borderRadius: "999px",
+              fontWeight: 700,
+              color: "#374151",
+              borderColor: "rgba(15, 23, 42, 0.12)",
+              backgroundColor: "#ffffff",
+              "& .MuiChip-icon": {
+                color: "primary.main",
+                fontSize: 18,
+              },
+            }}
+          />
+        </Stack>
       </Stack>
 
       <Paper
         elevation={0}
         sx={{
-          height: "calc(100vh - 190px)",
-          minHeight: 520,
-          borderRadius: "26px",
-          border: "1px solid #ececef",
+          height: {
+            xs: "calc(100vh - 150px)",
+            sm: "calc(100vh - 155px)",
+            md: "calc(100vh - 165px)",
+          },
+          minHeight: {
+            xs: 520,
+            md: 560,
+          },
+          borderRadius: { xs: "22px", md: "26px" },
+          border: "1px solid rgba(15, 23, 42, 0.08)",
           backgroundColor: "#ffffff",
+          boxShadow: "0 18px 45px rgba(15, 23, 42, 0.045)",
           overflow: "hidden",
           display: "flex",
           flexDirection: "column",
@@ -157,40 +243,91 @@ const Chat = () => {
       >
         <Box
           sx={{
-            px: 3,
-            py: 2.2,
-            borderBottom: "1px solid #ececef",
-            background:
-              "linear-gradient(135deg, #ffffff 0%, #ffffff 60%, #f6edf2 100%)",
+            px: { xs: 2.2, sm: 2.6, md: 3 },
+            py: { xs: 1.9, md: 2.2 },
+            borderBottom: "1px solid rgba(15, 23, 42, 0.08)",
+            backgroundColor: "#ffffff",
           }}
         >
-          <Typography
-            sx={{
-              fontWeight: 900,
-              color: "primary.main",
-              fontSize: "1.25rem",
-            }}
+          <Stack
+            direction="row"
+            alignItems="center"
+            justifyContent="space-between"
+            spacing={2}
           >
-            Sala general
-          </Typography>
+            <Stack direction="row" spacing={1.4} alignItems="center" sx={{ minWidth: 0 }}>
+              <Box
+                sx={{
+                  width: { xs: 42, md: 46 },
+                  height: { xs: 42, md: 46 },
+                  borderRadius: "16px",
+                  backgroundColor: "rgba(165, 4, 84, 0.07)",
+                  color: "primary.main",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <ForumRoundedIcon sx={{ fontSize: { xs: 24, md: 26 } }} />
+              </Box>
 
-          <Typography sx={{ color: "#6b7280", fontSize: "0.95rem" }}>
-            Todos los boxes y administradores pueden leer y escribir acá.
-          </Typography>
+              <Box sx={{ minWidth: 0 }}>
+                <Typography
+                  noWrap
+                  sx={{
+                    fontWeight: 800,
+                    color: "#111827",
+                    fontSize: { xs: "1.1rem", md: "1.22rem" },
+                    letterSpacing: "-0.2px",
+                    lineHeight: 1.2,
+                  }}
+                >
+                  Sala general
+                </Typography>
+
+                <Typography
+                  noWrap
+                  sx={{
+                    color: "#64748b",
+                    fontSize: { xs: "0.84rem", md: "0.92rem" },
+                    fontWeight: 500,
+                    mt: 0.2,
+                  }}
+                >
+                  Mensajes compartidos del equipo
+                </Typography>
+              </Box>
+            </Stack>
+
+            <Box
+              sx={{
+                display: { xs: "none", sm: "block" },
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                backgroundColor: "#22c55e",
+                boxShadow: "0 0 0 4px rgba(34, 197, 94, 0.12)",
+                flexShrink: 0,
+              }}
+            />
+          </Stack>
         </Box>
 
         <Box
           sx={{
             flex: 1,
             overflowY: "auto",
-            p: { xs: 2, md: 3 },
-            backgroundColor: "#fafafa",
+            p: { xs: 2, md: 2.8 },
+            background:
+              "linear-gradient(180deg, #f8fafc 0%, #fafafa 100%)",
           }}
         >
           {loading ? (
             <Box
               sx={{
                 height: "100%",
+                minHeight: 280,
                 display: "flex",
                 justifyContent: "center",
                 alignItems: "center",
@@ -202,6 +339,7 @@ const Chat = () => {
             <Box
               sx={{
                 height: "100%",
+                minHeight: 320,
                 display: "flex",
                 justifyContent: "center",
                 alignItems: "center",
@@ -210,33 +348,54 @@ const Chat = () => {
               }}
             >
               <Box>
-                <ChatRoundedIcon
+                <Box
                   sx={{
-                    fontSize: 76,
+                    width: 74,
+                    height: 74,
+                    borderRadius: "24px",
+                    backgroundColor: "rgba(165, 4, 84, 0.07)",
                     color: "primary.main",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    mx: "auto",
                     mb: 2,
                   }}
-                />
+                >
+                  <ChatRoundedIcon sx={{ fontSize: 40 }} />
+                </Box>
 
                 <Typography
                   sx={{
-                    fontSize: "1.6rem",
-                    fontWeight: 900,
-                    color: "primary.main",
+                    fontSize: { xs: "1.25rem", md: "1.4rem" },
+                    fontWeight: 800,
+                    color: "#111827",
+                    letterSpacing: "-0.3px",
                   }}
                 >
                   Todavía no hay mensajes
                 </Typography>
 
-                <Typography sx={{ color: "#6b7280", mt: 1 }}>
+                <Typography
+                  sx={{
+                    color: "#64748b",
+                    mt: 0.8,
+                    fontWeight: 500,
+                    lineHeight: 1.45,
+                  }}
+                >
                   Escribí el primer mensaje para iniciar la conversación.
                 </Typography>
               </Box>
             </Box>
           ) : (
-            <Stack spacing={1.7}>
+            <Stack spacing={1.5}>
               {mensajes.map((mensaje) => {
                 const esPropio = mensaje.uid === uid;
+                const mensajeRol = (mensaje.rol || "BOX").toUpperCase();
+                const mensajeRolLabel = getRoleLabel(mensajeRol);
+                const mensajeNombre = mensaje.nombreCompleto || "Usuario";
+                const initials = getInitials(mensajeNombre);
 
                 return (
                   <Box
@@ -248,81 +407,108 @@ const Chat = () => {
                   >
                     <Stack
                       direction={esPropio ? "row-reverse" : "row"}
-                      spacing={1.2}
+                      spacing={1.1}
                       alignItems="flex-end"
                       sx={{
-                        maxWidth: { xs: "92%", md: "72%" },
+                        maxWidth: {
+                          xs: "96%",
+                          sm: "84%",
+                          md: "68%",
+                          lg: "58%",
+                        },
                       }}
                     >
                       <Avatar
                         sx={{
-                          bgcolor: esPropio ? "primary.main" : "#6b7280",
-                          width: 38,
-                          height: 38,
-                          fontWeight: 900,
+                          bgcolor: esPropio ? "primary.main" : "#475569",
+                          width: { xs: 34, md: 38 },
+                          height: { xs: 34, md: 38 },
+                          fontWeight: 800,
+                          fontSize: "0.82rem",
+                          boxShadow: esPropio
+                            ? "0 10px 22px rgba(165, 4, 84, 0.16)"
+                            : "none",
                         }}
                       >
-                        {(mensaje.nombreCompleto || "U")
-                          .charAt(0)
-                          .toUpperCase()}
+                        {initials}
                       </Avatar>
 
-                      <Box>
+                      <Box sx={{ minWidth: 0 }}>
                         <Stack
                           direction="row"
-                          spacing={1}
+                          spacing={0.8}
                           justifyContent={esPropio ? "flex-end" : "flex-start"}
                           alignItems="center"
-                          sx={{ mb: 0.5 }}
+                          sx={{ mb: 0.45 }}
                         >
-                          <Typography
-                            sx={{
-                              color: "#6b7280",
-                              fontSize: "0.8rem",
-                              fontWeight: 700,
-                            }}
-                          >
-                            {mensaje.nombreCompleto || "Usuario"}
-                          </Typography>
+                          <Tooltip title={esPropio ? nombreCompleto : mensajeNombre} arrow placement="top">
+                            <Typography
+                              noWrap
+                              sx={{
+                                color: "#64748b",
+                                fontSize: "0.78rem",
+                                fontWeight: 650,
+                                maxWidth: { xs: 150, sm: 220 },
+                              }}
+                            >
+                              {esPropio ? "Vos" : mensajeNombre}
+                            </Typography>
+                          </Tooltip>
 
-                          <Chip
-                            size="small"
-                            label={
-                              mensaje.rol === "ADMIN"
-                                ? "Admin"
-                                : mensaje.boxNombre || "Box"
-                            }
-                            color={mensaje.rol === "ADMIN" ? "primary" : "default"}
-                            variant="outlined"
-                            sx={{
-                              height: 22,
-                              fontSize: "0.72rem",
-                              fontWeight: 800,
-                            }}
-                          />
+                          {!esPropio && (
+                            <Chip
+                              size="small"
+                              label={mensajeRolLabel}
+                              variant="outlined"
+                              sx={{
+                                height: 21,
+                                borderRadius: "999px",
+                                fontSize: "0.68rem",
+                                fontWeight: 700,
+                                color:
+                                  mensajeRol === "ADMIN"
+                                    ? "primary.main"
+                                    : "#475569",
+                                borderColor:
+                                  mensajeRol === "ADMIN"
+                                    ? "rgba(165, 4, 84, 0.18)"
+                                    : "rgba(15, 23, 42, 0.12)",
+                                backgroundColor:
+                                  mensajeRol === "ADMIN"
+                                    ? "rgba(165, 4, 84, 0.04)"
+                                    : "#ffffff",
+                              }}
+                            />
+                          )}
                         </Stack>
 
                         <Paper
                           elevation={0}
                           sx={{
-                            px: 2,
-                            py: 1.3,
+                            px: { xs: 1.55, md: 1.8 },
+                            py: { xs: 1.15, md: 1.25 },
                             borderRadius: esPropio
-                              ? "18px 18px 4px 18px"
-                              : "18px 18px 18px 4px",
+                              ? "18px 18px 6px 18px"
+                              : "18px 18px 18px 6px",
                             backgroundColor: esPropio
                               ? "primary.main"
                               : "#ffffff",
                             color: esPropio ? "#ffffff" : "#111827",
-                            border: esPropio ? "none" : "1px solid #ececef",
+                            border: esPropio
+                              ? "none"
+                              : "1px solid rgba(15, 23, 42, 0.08)",
+                            boxShadow: esPropio
+                              ? "0 10px 24px rgba(165, 4, 84, 0.16)"
+                              : "0 8px 20px rgba(15, 23, 42, 0.04)",
                           }}
                         >
                           <Typography
                             sx={{
                               whiteSpace: "pre-wrap",
                               wordBreak: "break-word",
-                              fontSize: "0.98rem",
-                              lineHeight: 1.45,
+                              fontSize: { xs: "0.94rem", md: "0.98rem" },
+                              lineHeight: 1.48,
+                              fontWeight: 450,
                             }}
                           >
                             {mensaje.texto}
@@ -331,21 +517,14 @@ const Chat = () => {
 
                         <Typography
                           sx={{
-                            color: "#9ca3af",
-                            fontSize: "0.75rem",
-                            mt: 0.4,
+                            color: "#94a3b8",
+                            fontSize: "0.72rem",
+                            mt: 0.45,
                             textAlign: esPropio ? "right" : "left",
+                            fontWeight: 500,
                           }}
                         >
-                          {mensaje.createdAtDate
-                            ? new Date(mensaje.createdAtDate).toLocaleTimeString(
-                                "es-AR",
-                                {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                }
-                              )
-                            : ""}
+                          {formatMessageTime(mensaje.createdAtDate)}
                         </Typography>
                       </Box>
                     </Stack>
@@ -358,15 +537,15 @@ const Chat = () => {
           )}
         </Box>
 
-        <Divider />
+        <Divider sx={{ borderColor: "rgba(15, 23, 42, 0.08)" }} />
 
         <Box
           sx={{
-            p: { xs: 2, md: 2.5 },
+            p: { xs: 1.7, sm: 2, md: 2.2 },
             backgroundColor: "#ffffff",
           }}
         >
-          <Stack direction="row" spacing={1.5} alignItems="flex-end">
+          <Stack direction="row" spacing={1.2} alignItems="flex-end">
             <TextField
               fullWidth
               multiline
@@ -378,8 +557,21 @@ const Chat = () => {
               disabled={enviando}
               sx={{
                 "& .MuiOutlinedInput-root": {
+                  minHeight: 52,
                   borderRadius: "18px",
-                  backgroundColor: "#fafafa",
+                  backgroundColor: "#f8fafc",
+                  fontSize: "0.96rem",
+                  pr: 1,
+                  "& fieldset": {
+                    borderColor: "rgba(15, 23, 42, 0.10)",
+                  },
+                  "&:hover fieldset": {
+                    borderColor: "rgba(165, 4, 84, 0.35)",
+                  },
+                  "&.Mui-focused fieldset": {
+                    borderColor: "primary.main",
+                    borderWidth: 2,
+                  },
                 },
               }}
             />
@@ -388,17 +580,21 @@ const Chat = () => {
               onClick={handleEnviar}
               disabled={enviando || !texto.trim()}
               sx={{
-                width: 54,
-                height: 54,
+                width: { xs: 50, md: 54 },
+                height: { xs: 50, md: 54 },
                 borderRadius: "18px",
                 color: "#ffffff",
                 backgroundColor: "primary.main",
+                flexShrink: 0,
+                boxShadow: "0 12px 26px rgba(165, 4, 84, 0.18)",
                 "&:hover": {
                   backgroundColor: "primary.dark",
+                  boxShadow: "0 12px 26px rgba(165, 4, 84, 0.18)",
                 },
                 "&.Mui-disabled": {
                   backgroundColor: "#e5e7eb",
                   color: "#9ca3af",
+                  boxShadow: "none",
                 },
               }}
             >

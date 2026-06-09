@@ -1,3 +1,4 @@
+//Importaciones:
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
@@ -10,7 +11,6 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import DoneRoundedIcon from "@mui/icons-material/DoneRounded";
 import CampaignRoundedIcon from "@mui/icons-material/CampaignRounded";
@@ -18,19 +18,21 @@ import PauseCircleRoundedIcon from "@mui/icons-material/PauseCircleRounded";
 import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
 import ConfirmationNumberRoundedIcon from "@mui/icons-material/ConfirmationNumberRounded";
 import PersonOffRoundedIcon from "@mui/icons-material/PersonOffRounded";
-
+import MeetingRoomRoundedIcon from "@mui/icons-material/MeetingRoomRounded";
+import AccessTimeRoundedIcon from "@mui/icons-material/AccessTimeRounded";
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   onSnapshot,
   query,
   updateDoc,
   where,
 } from "firebase/firestore";
-
 import { db } from "../../firebase/firebaseConfig";
 
+//JSX:
 const calcularSegundos = (inicio, fin) => {
   if (!inicio || !fin) return null;
   return Math.max(
@@ -78,6 +80,26 @@ const Turnos = () => {
   const [error, setError] = useState("");
 
   const hoy = useMemo(() => new Date().toISOString().split("T")[0], []);
+
+  useEffect(() => {
+    const cargarEstadoBox = async () => {
+      try {
+        if (!operadorId) return;
+
+        const usuarioRef = doc(db, "usuarios", operadorId);
+        const usuarioSnap = await getDoc(usuarioRef);
+
+        if (usuarioSnap.exists()) {
+          const usuarioData = usuarioSnap.data();
+          setEnPausa(usuarioData.estadoBox === "PAUSA");
+        }
+      } catch (error) {
+        console.error("Error cargando estado del box:", error);
+      }
+    };
+
+    cargarEstadoBox();
+  }, [operadorId]);
 
   useEffect(() => {
     const q = query(
@@ -170,8 +192,7 @@ const Turnos = () => {
 
       const turnosOrdenados = snapshot.docs.sort((a, b) => {
         return (
-          new Date(a.data().createdAtDate) -
-          new Date(b.data().createdAtDate)
+          new Date(a.data().createdAtDate) - new Date(b.data().createdAtDate)
         );
       });
 
@@ -284,51 +305,142 @@ const Turnos = () => {
     }
   };
 
+  const handleTogglePausa = async () => {
+    try {
+      setError("");
+
+      if (turnoActual) {
+        setError("No podés pausar el box mientras tenés un turno activo.");
+        return;
+      }
+
+      if (!operadorId) {
+        setError("No se pudo identificar el usuario del box.");
+        return;
+      }
+
+      setAccionLoading(true);
+
+      const nuevoEnPausa = !enPausa;
+      const nuevoEstadoBox = nuevoEnPausa ? "PAUSA" : "DISPONIBLE";
+      const ahora = new Date();
+
+      await updateDoc(doc(db, "usuarios", operadorId), {
+        estadoBox: nuevoEstadoBox,
+        pausadoAt: nuevoEnPausa ? ahora.toISOString() : null,
+        disponibleAt: !nuevoEnPausa ? ahora.toISOString() : null,
+      });
+
+      setEnPausa(nuevoEnPausa);
+    } catch (error) {
+      console.error("Error cambiando estado de pausa:", error);
+      setError("No se pudo cambiar el estado del box.");
+    } finally {
+      setAccionLoading(false);
+    }
+  };
+
   return (
-    <Box>
+    <Box
+      sx={{
+        width: "100%",
+        maxWidth: 1480,
+        mx: "auto",
+      }}
+    >
       <Stack
         direction={{ xs: "column", md: "row" }}
         justifyContent="space-between"
         alignItems={{ xs: "flex-start", md: "center" }}
         spacing={2}
-        sx={{ mb: 3 }}
+        sx={{ mb: { xs: 2.5, md: 3 } }}
       >
-        <Box>
+        <Box sx={{ minWidth: 0 }}>
           <Typography
             sx={{
-              fontSize: { xs: "1.7rem", md: "2rem" },
-              fontWeight: 900,
-              color: "primary.main",
-              lineHeight: 1.1,
+              fontSize: { xs: "1.55rem", sm: "1.7rem", md: "1.9rem" },
+              fontWeight: 800,
+              color: "#111827",
+              lineHeight: 1.12,
+              letterSpacing: "-0.7px",
             }}
           >
             Gestión de turnos
           </Typography>
 
-          <Typography sx={{ color: "#6b7280", mt: 0.8 }}>
-            Llamá, atendé, finalizá o marcá ausente al turno asignado.
+          <Typography
+            sx={{
+              color: "#64748b",
+              mt: 0.7,
+              fontSize: { xs: "0.95rem", md: "1rem" },
+              fontWeight: 500,
+              lineHeight: 1.45,
+            }}
+          >
+            Llamá, atendé y resolvé los turnos asignados a tu box.
           </Typography>
         </Box>
 
-        <Stack direction="row" spacing={1} flexWrap="wrap">
+        <Stack
+          direction="row"
+          spacing={1}
+          flexWrap="wrap"
+          useFlexGap
+          sx={{
+            justifyContent: { xs: "flex-start", md: "flex-end" },
+          }}
+        >
           <Chip
+            icon={<MeetingRoomRoundedIcon />}
             label={boxNombre}
-            color="primary"
             variant="outlined"
-            sx={{ fontWeight: 800 }}
+            sx={{
+              height: 34,
+              borderRadius: "999px",
+              fontWeight: 700,
+              color: "#374151",
+              borderColor: "rgba(15, 23, 42, 0.12)",
+              backgroundColor: "#ffffff",
+              "& .MuiChip-icon": {
+                color: "primary.main",
+                fontSize: 18,
+              },
+            }}
           />
 
           <Chip
-            label={enPausa ? "En pausa" : "Disponible"}
-            color={enPausa ? "warning" : "success"}
+            label={enPausa ? "Box en pausa" : "Disponible"}
             variant="outlined"
-            sx={{ fontWeight: 800 }}
+            sx={{
+              height: 34,
+              borderRadius: "999px",
+              fontWeight: 700,
+              color: enPausa ? "#92400e" : "#166534",
+              borderColor: enPausa
+                ? "rgba(217, 119, 6, 0.28)"
+                : "rgba(22, 101, 52, 0.24)",
+              backgroundColor: enPausa
+                ? "rgba(245, 158, 11, 0.08)"
+                : "rgba(22, 163, 74, 0.08)",
+            }}
           />
         </Stack>
       </Stack>
 
       {error && (
-        <Alert severity="warning" sx={{ borderRadius: "14px", mb: 2 }}>
+        <Alert
+          severity="warning"
+          sx={{
+            borderRadius: "18px",
+            mb: 2.5,
+            border: "1px solid rgba(245, 158, 11, 0.20)",
+            backgroundColor: "rgba(245, 158, 11, 0.08)",
+            color: "#78350f",
+            "& .MuiAlert-icon": {
+              color: "#d97706",
+            },
+          }}
+        >
           {error}
         </Alert>
       )}
@@ -336,58 +448,100 @@ const Turnos = () => {
       <Box
         sx={{
           display: "grid",
-          gridTemplateColumns: { xs: "1fr", lg: "1.25fr 1fr" },
-          gap: 3,
+          gridTemplateColumns: {
+            xs: "1fr",
+            lg: "minmax(0, 1.18fr) minmax(340px, 0.82fr)",
+          },
+          gap: {
+            xs: 2,
+            md: 2.5,
+            lg: 3,
+          },
+          alignItems: "stretch",
         }}
       >
         <Paper
           elevation={0}
           sx={{
-            borderRadius: "24px",
-            border: "1px solid #ececef",
+            borderRadius: { xs: "22px", md: "26px" },
+            border: "1px solid rgba(15, 23, 42, 0.08)",
             backgroundColor: "#ffffff",
-            p: { xs: 3, md: 4 },
-            minHeight: 420,
+            boxShadow: "0 18px 45px rgba(15, 23, 42, 0.045)",
+            p: { xs: 2.2, sm: 2.6, md: 3.2 },
+            minHeight: { xs: "auto", lg: 460 },
+            overflow: "hidden",
           }}
         >
-          <Stack spacing={3}>
+          <Stack spacing={{ xs: 2.2, md: 2.7 }}>
             <Stack
               direction="row"
-              alignItems="center"
+              alignItems="flex-start"
               justifyContent="space-between"
+              spacing={2}
             >
-              <Box>
+              <Box sx={{ minWidth: 0 }}>
                 <Typography
                   sx={{
-                    color: "primary.main",
-                    fontSize: "1.4rem",
-                    fontWeight: 900,
+                    color: "#111827",
+                    fontSize: { xs: "1.22rem", md: "1.38rem" },
+                    fontWeight: 800,
+                    letterSpacing: "-0.3px",
                   }}
                 >
                   Turno actual
                 </Typography>
 
-                <Typography sx={{ color: "#6b7280", mt: 0.5 }}>
-                  Este turno se muestra en la pantalla principal.
+                <Typography
+                  sx={{
+                    color: "#64748b",
+                    mt: 0.45,
+                    fontSize: { xs: "0.92rem", md: "0.98rem" },
+                    fontWeight: 500,
+                    lineHeight: 1.45,
+                  }}
+                >
+                  Se mostrará en la pantalla principal cuando sea llamado.
                 </Typography>
               </Box>
 
-              <CampaignRoundedIcon
-                sx={{ color: "primary.main", fontSize: 42 }}
-              />
+              <Box
+                sx={{
+                  width: { xs: 46, md: 52 },
+                  height: { xs: 46, md: 52 },
+                  borderRadius: "18px",
+                  backgroundColor: "rgba(165, 4, 84, 0.08)",
+                  color: "primary.main",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <CampaignRoundedIcon sx={{ fontSize: { xs: 27, md: 31 } }} />
+              </Box>
             </Stack>
 
-            <Divider />
+            <Divider sx={{ borderColor: "rgba(15, 23, 42, 0.08)" }} />
 
             {turnoActual ? (
-              <Box sx={{ textAlign: "center", py: 2 }}>
+              <Box
+                sx={{
+                  textAlign: "center",
+                  py: { xs: 1, md: 1.5 },
+                }}
+              >
                 <Typography
                   sx={{
                     color: "primary.main",
-                    fontSize: { xs: "4.5rem", md: "6rem" },
-                    fontWeight: 950,
+                    fontSize: {
+                      xs: "3.8rem",
+                      sm: "4.5rem",
+                      md: "5.2rem",
+                      xl: "5.7rem",
+                    },
+                    fontWeight: 800,
                     lineHeight: 0.95,
-                    letterSpacing: "-3px",
+                    letterSpacing: { xs: "-2px", md: "-3px" },
                   }}
                 >
                   {turnoActual.numero}
@@ -396,9 +550,10 @@ const Turnos = () => {
                 <Typography
                   sx={{
                     color: "#111827",
-                    fontSize: { xs: "1.4rem", md: "1.8rem" },
-                    fontWeight: 900,
-                    mt: 2,
+                    fontSize: { xs: "1.16rem", md: "1.38rem" },
+                    fontWeight: 750,
+                    mt: 1.7,
+                    lineHeight: 1.2,
                   }}
                 >
                   {turnoActual.tipoConsultaLabel || "Consulta"}
@@ -406,10 +561,10 @@ const Turnos = () => {
 
                 <Typography
                   sx={{
-                    color: "#6b7280",
-                    fontSize: "1rem",
-                    fontWeight: 700,
-                    mt: 0.8,
+                    color: "#64748b",
+                    fontSize: "0.94rem",
+                    fontWeight: 600,
+                    mt: 0.7,
                   }}
                 >
                   DNI {turnoActual.dni || "-"}
@@ -420,7 +575,8 @@ const Turnos = () => {
                   justifyContent="center"
                   spacing={1}
                   flexWrap="wrap"
-                  sx={{ mt: 2 }}
+                  useFlexGap
+                  sx={{ mt: 2.2 }}
                 >
                   <Chip
                     label={
@@ -428,24 +584,40 @@ const Turnos = () => {
                         ? "En atención"
                         : "Llamado"
                     }
-                    color="primary"
-                    sx={{ fontWeight: 800 }}
+                    sx={{
+                      height: 32,
+                      borderRadius: "999px",
+                      fontWeight: 700,
+                      color: "#ffffff",
+                      backgroundColor: "primary.main",
+                    }}
                   />
 
                   <Chip
+                    icon={<AccessTimeRoundedIcon />}
                     label={`Espera: ${formatearTiempo(
                       turnoActual.tiempoEsperaSegundos
                     )}`}
                     variant="outlined"
-                    sx={{ fontWeight: 800 }}
+                    sx={{
+                      height: 32,
+                      borderRadius: "999px",
+                      fontWeight: 700,
+                      color: "#475569",
+                      borderColor: "rgba(15, 23, 42, 0.12)",
+                      "& .MuiChip-icon": {
+                        color: "#64748b",
+                        fontSize: 17,
+                      },
+                    }}
                   />
                 </Stack>
 
                 <Stack
                   direction={{ xs: "column", sm: "row" }}
-                  spacing={1.5}
+                  spacing={1.2}
                   justifyContent="center"
-                  sx={{ mt: 4 }}
+                  sx={{ mt: { xs: 3, md: 3.4 } }}
                 >
                   {turnoActual.estado === "llamado" && (
                     <>
@@ -455,11 +627,20 @@ const Turnos = () => {
                         onClick={handleIniciarAtencion}
                         disabled={accionLoading}
                         sx={{
-                          borderRadius: "14px",
-                          px: 3,
-                          py: 1.3,
-                          fontWeight: 900,
-                          boxShadow: "none",
+                          minHeight: 50,
+                          borderRadius: "16px",
+                          px: 2.6,
+                          fontWeight: 800,
+                          textTransform: "none",
+                          boxShadow: "0 12px 26px rgba(165, 4, 84, 0.18)",
+                          "&:hover": {
+                            boxShadow: "0 12px 26px rgba(165, 4, 84, 0.18)",
+                          },
+                          "&.Mui-disabled": {
+                            backgroundColor: "#e5e7eb",
+                            color: "#9ca3af",
+                            boxShadow: "none",
+                          },
                         }}
                       >
                         Iniciar atención
@@ -472,10 +653,17 @@ const Turnos = () => {
                         onClick={handleNoSePresento}
                         disabled={accionLoading}
                         sx={{
-                          borderRadius: "14px",
-                          px: 3,
-                          py: 1.3,
-                          fontWeight: 900,
+                          minHeight: 50,
+                          borderRadius: "16px",
+                          px: 2.6,
+                          fontWeight: 750,
+                          textTransform: "none",
+                          backgroundColor: "#ffffff",
+                          "&.Mui-disabled": {
+                            borderColor: "#e5e7eb",
+                            color: "#9ca3af",
+                            backgroundColor: "#ffffff",
+                          },
                         }}
                       >
                         No se presentó
@@ -491,11 +679,20 @@ const Turnos = () => {
                       onClick={handleFinalizarAtencion}
                       disabled={accionLoading}
                       sx={{
-                        borderRadius: "14px",
+                        minHeight: 52,
+                        borderRadius: "16px",
                         px: 3,
-                        py: 1.3,
-                        fontWeight: 900,
-                        boxShadow: "none",
+                        fontWeight: 800,
+                        textTransform: "none",
+                        boxShadow: "0 12px 26px rgba(165, 4, 84, 0.18)",
+                        "&:hover": {
+                          boxShadow: "0 12px 26px rgba(165, 4, 84, 0.18)",
+                        },
+                        "&.Mui-disabled": {
+                          backgroundColor: "#e5e7eb",
+                          color: "#9ca3af",
+                          boxShadow: "none",
+                        },
                       }}
                     >
                       Finalizar atención
@@ -506,171 +703,329 @@ const Turnos = () => {
             ) : (
               <Box
                 sx={{
-                  minHeight: 260,
+                  minHeight: { xs: 230, md: 255 },
                   borderRadius: "22px",
-                  backgroundColor: "#fafafa",
-                  border: "1px dashed #d1d5db",
+                  background:
+                    "linear-gradient(135deg, rgba(248, 250, 252, 0.95), rgba(255, 255, 255, 0.95))",
+                  border: "1px dashed rgba(100, 116, 139, 0.30)",
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
                   justifyContent: "center",
                   textAlign: "center",
-                  p: 3,
+                  p: { xs: 2.2, md: 3 },
                 }}
               >
-                <ConfirmationNumberRoundedIcon
-                  sx={{ fontSize: 76, color: "primary.main", mb: 2 }}
-                />
+                <Box
+                  sx={{
+                    width: 74,
+                    height: 74,
+                    borderRadius: "24px",
+                    backgroundColor: "rgba(165, 4, 84, 0.07)",
+                    color: "primary.main",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    mb: 2,
+                  }}
+                >
+                  <ConfirmationNumberRoundedIcon sx={{ fontSize: 42 }} />
+                </Box>
 
                 <Typography
                   sx={{
-                    color: "primary.main",
-                    fontSize: "1.5rem",
-                    fontWeight: 900,
+                    color: "#111827",
+                    fontSize: { xs: "1.25rem", md: "1.4rem" },
+                    fontWeight: 800,
                   }}
                 >
                   No hay turno activo
                 </Typography>
 
-                <Typography sx={{ color: "#6b7280", mt: 1 }}>
-                  Llamá al siguiente turno cuando estés disponible.
+                <Typography
+                  sx={{
+                    color: "#64748b",
+                    mt: 0.8,
+                    maxWidth: 360,
+                    lineHeight: 1.45,
+                    fontWeight: 500,
+                  }}
+                >
+                  Cuando estés listo, llamá al siguiente turno disponible.
                 </Typography>
               </Box>
             )}
 
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
-              <Button
-                fullWidth
-                variant="contained"
-                startIcon={<CampaignRoundedIcon />}
-                onClick={handleLlamarSiguiente}
-                disabled={accionLoading || enPausa || Boolean(turnoActual)}
-                sx={{
-                  height: 58,
-                  borderRadius: "16px",
-                  fontWeight: 900,
-                  boxShadow: "none",
-                }}
-              >
-                {accionLoading ? (
-                  <CircularProgress size={24} color="inherit" />
-                ) : (
-                  "Llamar siguiente"
-                )}
-              </Button>
-
-              <Button
-                fullWidth
-                variant="outlined"
-                color={enPausa ? "success" : "warning"}
-                startIcon={
-                  enPausa ? (
-                    <RestartAltRoundedIcon />
+            <Box
+              sx={{
+                pt: turnoActual ? { xs: 1.2, md: 1.5 } : 0,
+                mt: turnoActual ? { xs: 1, md: 1.2 } : 0,
+                borderTop: turnoActual
+                  ? "1px solid rgba(15, 23, 42, 0.08)"
+                  : "none",
+              }}
+            >
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.3}>
+                <Button
+                  fullWidth
+                  variant="contained"
+                  startIcon={<CampaignRoundedIcon />}
+                  onClick={handleLlamarSiguiente}
+                  disabled={accionLoading || enPausa || Boolean(turnoActual)}
+                  sx={{
+                    height: { xs: 54, md: 56 },
+                    borderRadius: "17px",
+                    fontWeight: 800,
+                    textTransform: "none",
+                    boxShadow: "0 14px 28px rgba(165, 4, 84, 0.18)",
+                    "&:hover": {
+                      boxShadow: "0 14px 28px rgba(165, 4, 84, 0.18)",
+                    },
+                    "&.Mui-disabled": {
+                      backgroundColor: "#e5e7eb",
+                      color: "#9ca3af",
+                      boxShadow: "none",
+                    },
+                  }}
+                >
+                  {accionLoading ? (
+                    <CircularProgress size={24} color="inherit" />
                   ) : (
-                    <PauseCircleRoundedIcon />
-                  )
-                }
-                onClick={() => setEnPausa((prev) => !prev)}
-                disabled={accionLoading || Boolean(turnoActual)}
-                sx={{
-                  height: 58,
-                  borderRadius: "16px",
-                  fontWeight: 900,
-                }}
-              >
-                {enPausa ? "Volver disponible" : "Pausar box"}
-              </Button>
-            </Stack>
+                    "Llamar siguiente"
+                  )}
+                </Button>
+
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  color={enPausa ? "success" : "warning"}
+                  startIcon={
+                    enPausa ? (
+                      <RestartAltRoundedIcon />
+                    ) : (
+                      <PauseCircleRoundedIcon />
+                    )
+                  }
+                  onClick={handleTogglePausa}
+                  disabled={accionLoading || Boolean(turnoActual)}
+                  sx={{
+                    height: { xs: 54, md: 56 },
+                    borderRadius: "17px",
+                    fontWeight: 750,
+                    textTransform: "none",
+                    backgroundColor: "#ffffff",
+                    "&.Mui-disabled": {
+                      borderColor: "#e5e7eb",
+                      color: "#9ca3af",
+                      backgroundColor: "#ffffff",
+                    },
+                  }}
+                >
+                  {enPausa ? "Volver disponible" : "Pausar box"}
+                </Button>
+              </Stack>
+            </Box>
           </Stack>
         </Paper>
 
         <Paper
           elevation={0}
           sx={{
-            borderRadius: "24px",
-            border: "1px solid #ececef",
+            borderRadius: { xs: "22px", md: "26px" },
+            border: "1px solid rgba(15, 23, 42, 0.08)",
             backgroundColor: "#ffffff",
-            p: { xs: 3, md: 4 },
+            boxShadow: "0 18px 45px rgba(15, 23, 42, 0.045)",
+            p: { xs: 2.2, sm: 2.6, md: 3.2 },
+            minHeight: { xs: "auto", lg: 460 },
+            display: "flex",
+            flexDirection: "column",
           }}
         >
           <Stack
             direction="row"
-            alignItems="center"
+            alignItems="flex-start"
             justifyContent="space-between"
-            sx={{ mb: 2 }}
+            spacing={2}
+            sx={{ mb: 2.2 }}
           >
-            <Typography
-              sx={{
-                color: "primary.main",
-                fontSize: "1.35rem",
-                fontWeight: 900,
-              }}
-            >
-              Cola de espera
-            </Typography>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography
+                sx={{
+                  color: "#111827",
+                  fontSize: { xs: "1.18rem", md: "1.32rem" },
+                  fontWeight: 800,
+                  letterSpacing: "-0.2px",
+                }}
+              >
+                Cola de espera
+              </Typography>
+
+              <Typography
+                sx={{
+                  color: "#64748b",
+                  mt: 0.4,
+                  fontSize: "0.92rem",
+                  fontWeight: 500,
+                }}
+              >
+                Próximos turnos disponibles
+              </Typography>
+            </Box>
 
             <Chip
               label={`${turnosEsperando.length} esperando`}
-              color="primary"
               variant="outlined"
-              sx={{ fontWeight: 800 }}
+              sx={{
+                height: 32,
+                borderRadius: "999px",
+                fontWeight: 700,
+                color: "primary.main",
+                borderColor: "rgba(165, 4, 84, 0.20)",
+                backgroundColor: "rgba(165, 4, 84, 0.04)",
+                flexShrink: 0,
+              }}
             />
           </Stack>
 
+          <Divider sx={{ borderColor: "rgba(15, 23, 42, 0.08)", mb: 2 }} />
+
           {loading ? (
-            <Box sx={{ display: "flex", justifyContent: "center", py: 5 }}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                py: 5,
+                flex: 1,
+              }}
+            >
               <CircularProgress />
             </Box>
           ) : turnosEsperando.length === 0 ? (
-            <Alert severity="info" sx={{ borderRadius: "14px" }}>
-              No hay turnos esperando.
-            </Alert>
+            <Box
+              sx={{
+                borderRadius: "20px",
+                backgroundColor: "#f8fafc",
+                border: "1px solid rgba(15, 23, 42, 0.07)",
+                p: 2.4,
+                textAlign: "center",
+              }}
+            >
+              <Typography
+                sx={{
+                  color: "#111827",
+                  fontWeight: 750,
+                  mb: 0.5,
+                }}
+              >
+                No hay turnos esperando
+              </Typography>
+
+              <Typography
+                sx={{
+                  color: "#64748b",
+                  fontSize: "0.92rem",
+                  fontWeight: 500,
+                }}
+              >
+                La cola se actualizará automáticamente.
+              </Typography>
+            </Box>
           ) : (
-            <Stack spacing={1.5}>
+            <Stack
+              spacing={1.2}
+              sx={{
+                flex: 1,
+                overflowY: "auto",
+                pr: { lg: 0.5 },
+                maxHeight: {
+                  xs: "none",
+                  lg: "calc(100vh - 250px)",
+                },
+              }}
+            >
               {turnosEsperando.slice(0, 8).map((turno, index) => (
                 <Box
                   key={turno.id}
                   sx={{
-                    p: 2,
+                    p: { xs: 1.6, md: 1.8 },
                     borderRadius: "18px",
-                    border: "1px solid #ececef",
+                    border:
+                      index === 0
+                        ? "1px solid rgba(165, 4, 84, 0.18)"
+                        : "1px solid rgba(15, 23, 42, 0.07)",
                     backgroundColor:
-                      index === 0 ? "rgba(165, 4, 84, 0.06)" : "#fafafa",
+                      index === 0 ? "rgba(165, 4, 84, 0.045)" : "#f8fafc",
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
-                    gap: 2,
+                    gap: 1.5,
+                    transition: "all 0.18s ease",
                   }}
                 >
-                  <Box>
-                    <Typography
+                  <Stack direction="row" alignItems="center" spacing={1.4}>
+                    <Box
                       sx={{
-                        color: "primary.main",
-                        fontSize: "1.7rem",
-                        fontWeight: 950,
-                        lineHeight: 1,
+                        width: 40,
+                        height: 40,
+                        borderRadius: "14px",
+                        backgroundColor:
+                          index === 0 ? "primary.main" : "#ffffff",
+                        color: index === 0 ? "#ffffff" : "primary.main",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontWeight: 800,
+                        fontSize: "0.86rem",
+                        border:
+                          index === 0
+                            ? "none"
+                            : "1px solid rgba(165, 4, 84, 0.12)",
+                        flexShrink: 0,
                       }}
                     >
-                      {turno.numero}
-                    </Typography>
+                      {index + 1}
+                    </Box>
 
-                    <Typography
-                      sx={{
-                        color: "#6b7280",
-                        fontSize: "0.9rem",
-                        fontWeight: 600,
-                        mt: 0.6,
-                      }}
-                    >
-                      {turno.tipoConsultaLabel || "Consulta"}
-                    </Typography>
-                  </Box>
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography
+                        sx={{
+                          color: index === 0 ? "primary.main" : "#111827",
+                          fontSize: { xs: "1.35rem", md: "1.5rem" },
+                          fontWeight: 800,
+                          lineHeight: 1,
+                          letterSpacing: "-0.7px",
+                        }}
+                      >
+                        {turno.numero}
+                      </Typography>
+
+                      <Typography
+                        noWrap
+                        sx={{
+                          color: "#64748b",
+                          fontSize: "0.88rem",
+                          fontWeight: 500,
+                          mt: 0.6,
+                          maxWidth: { xs: 170, sm: 260, lg: 180, xl: 260 },
+                        }}
+                      >
+                        {turno.tipoConsultaLabel || "Consulta"}
+                      </Typography>
+                    </Box>
+                  </Stack>
 
                   {index === 0 && (
                     <Chip
                       label="Siguiente"
-                      color="primary"
-                      sx={{ fontWeight: 800 }}
+                      sx={{
+                        height: 28,
+                        borderRadius: "999px",
+                        fontWeight: 700,
+                        color: "primary.main",
+                        backgroundColor: "rgba(165, 4, 84, 0.09)",
+                        flexShrink: 0,
+                      }}
                     />
                   )}
                 </Box>

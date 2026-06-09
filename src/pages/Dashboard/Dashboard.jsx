@@ -16,8 +16,9 @@ import {
   Chip,
   Paper,
   Badge,
+  Avatar,
+  Tooltip,
 } from "@mui/material";
-
 import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
 import DashboardRoundedIcon from "@mui/icons-material/DashboardRounded";
 import ConfirmationNumberRoundedIcon from "@mui/icons-material/ConfirmationNumberRounded";
@@ -27,12 +28,11 @@ import AssessmentRoundedIcon from "@mui/icons-material/AssessmentRounded";
 import PeopleRoundedIcon from "@mui/icons-material/PeopleRounded";
 import ChatRoundedIcon from "@mui/icons-material/ChatRounded";
 import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
-
+import AdminPanelSettingsRoundedIcon from "@mui/icons-material/AdminPanelSettingsRounded";
+import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
 import { collection, onSnapshot, query } from "firebase/firestore";
 import { db } from "../../firebase/firebaseConfig";
-
 import logoHorizontal from "../../assets/images/logo-horizontal.png";
-
 import HomeAdmin from "../../components/Home/HomeAdmin";
 import HomeBoxes from "../../components/Home/HomeBoxes";
 import Turnos from "../../components/Turnos/Turnos";
@@ -118,6 +118,20 @@ const Dashboard = () => {
   const currentSection = useMemo(() => {
     return sections.find((item) => item.id === selectedSection) || sections[0];
   }, [selectedSection, sections]);
+
+  const rolLabel = rol === "ADMIN" ? "Administrador" : "Box de atención";
+
+  const userInitials = useMemo(() => {
+    const partes = nombreCompleto
+      .trim()
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2);
+
+    if (!partes.length) return "U";
+
+    return partes.map((item) => item[0]?.toUpperCase()).join("");
+  }, [nombreCompleto]);
 
   useEffect(() => {
     const q = query(collection(db, "chatMensajes"));
@@ -239,9 +253,10 @@ const Dashboard = () => {
       <Box
         sx={{
           px: 2.5,
-          py: 3,
+          py: 2.8,
           display: "flex",
           alignItems: "center",
+          justifyContent: "center",
         }}
       >
         <Box
@@ -249,16 +264,23 @@ const Dashboard = () => {
           src={logoHorizontal}
           alt="Logo"
           sx={{
-            width: 150,
-            maxHeight: 48,
+            width: 168,
+            maxHeight: 52,
             objectFit: "contain",
           }}
         />
       </Box>
 
-      <Divider />
+      <Divider sx={{ borderColor: "rgba(15, 23, 42, 0.08)" }} />
 
-      <List sx={{ px: 1.5, py: 2, flex: 1 }}>
+      <List
+        sx={{
+          px: 1.5,
+          py: 2,
+          flex: 1,
+          overflowY: "auto",
+        }}
+      >
         {sections.map((item) => {
           const active = selectedSection === item.id;
           const isChat = item.id === "chat";
@@ -270,18 +292,24 @@ const Dashboard = () => {
               onClick={() => handleChangeSection(item.id)}
               sx={{
                 mb: 0.8,
-                borderRadius: "14px",
-                minHeight: 52,
+                borderRadius: "16px",
+                minHeight: 54,
+                px: 1.6,
                 color: active ? "primary.main" : "#374151",
                 backgroundColor: active
                   ? "rgba(165, 4, 84, 0.09)"
                   : hasUnread
                   ? "rgba(165, 4, 84, 0.06)"
                   : "transparent",
+                border: active
+                  ? "1px solid rgba(165, 4, 84, 0.14)"
+                  : "1px solid transparent",
+                transition: "all 0.18s ease",
                 "&:hover": {
                   backgroundColor: active
                     ? "rgba(165, 4, 84, 0.12)"
                     : "rgba(17, 24, 39, 0.04)",
+                  transform: "translateX(2px)",
                 },
               }}
             >
@@ -289,6 +317,9 @@ const Dashboard = () => {
                 sx={{
                   color: active || hasUnread ? "primary.main" : "#6b7280",
                   minWidth: 42,
+                  "& svg": {
+                    fontSize: 24,
+                  },
                 }}
               >
                 {isChat ? (
@@ -297,6 +328,12 @@ const Dashboard = () => {
                     color="primary"
                     invisible={!hasUnread}
                     max={99}
+                    sx={{
+                      "& .MuiBadge-badge": {
+                        fontWeight: 800,
+                        fontSize: "0.68rem",
+                      },
+                    }}
                   >
                     {item.icon}
                   </Badge>
@@ -322,6 +359,7 @@ const Dashboard = () => {
                     height: 24,
                     fontSize: "0.72rem",
                     fontWeight: 800,
+                    borderRadius: "999px",
                   }}
                 />
               )}
@@ -334,23 +372,76 @@ const Dashboard = () => {
         <Paper
           elevation={0}
           sx={{
-            p: 2,
-            borderRadius: "18px",
-            backgroundColor: "rgba(165, 4, 84, 0.07)",
-            border: "1px solid rgba(165, 4, 84, 0.12)",
+            p: 1.6,
+            borderRadius: "22px",
+            background:
+              "linear-gradient(135deg, rgba(165, 4, 84, 0.08), rgba(165, 4, 84, 0.035))",
+            border: "1px solid rgba(165, 4, 84, 0.13)",
           }}
         >
-          <Typography sx={{ fontSize: "0.8rem", color: "#6b7280", mb: 0.5 }}>
-            Sesión actual
-          </Typography>
+          <Stack direction="row" alignItems="center" spacing={1.4}>
+            <Avatar
+              sx={{
+                width: 44,
+                height: 44,
+                bgcolor: "primary.main",
+                color: "#ffffff",
+                fontWeight: 900,
+                fontSize: "0.95rem",
+                boxShadow: "0 10px 22px rgba(165, 4, 84, 0.20)",
+              }}
+            >
+              {userInitials}
+            </Avatar>
 
-          <Typography sx={{ fontWeight: 800, color: "primary.main" }}>
-            {nombreCompleto}
-          </Typography>
+            <Box sx={{ minWidth: 0, flex: 1 }}>
+              <Typography
+                sx={{
+                  fontSize: "0.76rem",
+                  color: "#64748b",
+                  fontWeight: 600,
+                  lineHeight: 1.2,
+                  mb: 0.3,
+                }}
+              >
+                Sesión actual
+              </Typography>
 
-          <Typography sx={{ fontSize: "0.85rem", color: "#6b7280", mt: 0.5 }}>
-            {rol === "ADMIN" ? "Administrador" : "Box"}
-          </Typography>
+              <Tooltip title={nombreCompleto} placement="top" arrow>
+                <Typography
+                  noWrap
+                  sx={{
+                    fontWeight: 800,
+                    color: "#111827",
+                    fontSize: "0.95rem",
+                    lineHeight: 1.25,
+                  }}
+                >
+                  {nombreCompleto}
+                </Typography>
+              </Tooltip>
+
+              <Stack direction="row" alignItems="center" spacing={0.6} sx={{ mt: 0.6 }}>
+                {rol === "ADMIN" ? (
+                  <AdminPanelSettingsRoundedIcon
+                    sx={{ fontSize: 16, color: "primary.main" }}
+                  />
+                ) : (
+                  <PersonRoundedIcon sx={{ fontSize: 16, color: "primary.main" }} />
+                )}
+
+                <Typography
+                  sx={{
+                    fontSize: "0.8rem",
+                    color: "#64748b",
+                    fontWeight: 650,
+                  }}
+                >
+                  {rolLabel}
+                </Typography>
+              </Stack>
+            </Box>
+          </Stack>
         </Paper>
       </Box>
     </Box>
@@ -370,45 +461,86 @@ const Dashboard = () => {
         sx={{
           width: { md: `calc(100% - ${drawerWidth}px)` },
           ml: { md: `${drawerWidth}px` },
-          backgroundColor: "#ffffff",
+          backgroundColor: "rgba(255, 255, 255, 0.92)",
+          backdropFilter: "blur(12px)",
           color: "#111827",
-          borderBottom: "1px solid #ececef",
+          borderBottom: "1px solid rgba(15, 23, 42, 0.08)",
         }}
       >
         <Toolbar
           sx={{
-            minHeight: "72px !important",
-            px: { xs: 2, md: 3 },
+            minHeight: {
+              xs: "66px !important",
+              md: "72px !important",
+            },
+            px: {
+              xs: 1.5,
+              sm: 2,
+              md: 3,
+            },
             display: "flex",
             justifyContent: "space-between",
-            gap: 2,
+            gap: {
+              xs: 1,
+              sm: 2,
+            },
           }}
         >
-          <Stack direction="row" alignItems="center" spacing={1.5}>
+          <Stack
+            direction="row"
+            alignItems="center"
+            spacing={{
+              xs: 1,
+              sm: 1.5,
+            }}
+            sx={{
+              minWidth: 0,
+              flex: 1,
+            }}
+          >
             <IconButton
               onClick={() => setMobileOpen(true)}
-              sx={{ display: { md: "none" }, color: "primary.main" }}
+              sx={{
+                display: { md: "none" },
+                color: "primary.main",
+                backgroundColor: "rgba(165, 4, 84, 0.08)",
+                borderRadius: "14px",
+                "&:hover": {
+                  backgroundColor: "rgba(165, 4, 84, 0.12)",
+                },
+              }}
             >
               <MenuRoundedIcon />
             </IconButton>
 
-            <Box>
+            <Box sx={{ minWidth: 0 }}>
               <Typography
+                noWrap
                 sx={{
-                  fontWeight: 900,
-                  fontSize: { xs: "1.15rem", md: "1.4rem" },
+                  fontWeight: 850,
+                  fontSize: {
+                    xs: "1.08rem",
+                    sm: "1.18rem",
+                    md: "1.38rem",
+                  },
                   color: "#111827",
-                  lineHeight: 1.1,
+                  lineHeight: 1.15,
+                  letterSpacing: "-0.3px",
                 }}
               >
                 {currentSection?.title}
               </Typography>
 
               <Typography
+                noWrap
                 sx={{
-                  color: "#6b7280",
+                  color: "#64748b",
                   fontSize: "0.9rem",
-                  display: { xs: "none", sm: "block" },
+                  display: {
+                    xs: "none",
+                    sm: "block",
+                  },
+                  mt: 0.2,
                 }}
               >
                 Sistema de turnos y gestión de boxes
@@ -416,14 +548,48 @@ const Dashboard = () => {
             </Box>
           </Stack>
 
-          <Stack direction="row" alignItems="center" spacing={1}>
+          <Stack
+            direction="row"
+            alignItems="center"
+            spacing={{
+              xs: 0.8,
+              sm: 1,
+            }}
+            sx={{
+              flexShrink: 0,
+            }}
+          >
             <Chip
-              label={rol}
+              icon={
+                rol === "ADMIN" ? (
+                  <AdminPanelSettingsRoundedIcon />
+                ) : (
+                  <MeetingRoomRoundedIcon />
+                )
+              }
+              label={rolLabel}
               color="primary"
               variant="outlined"
               sx={{
+                height: 34,
+                px: 0.4,
+                borderRadius: "999px",
                 fontWeight: 800,
-                display: { xs: "none", sm: "flex" },
+                backgroundColor: "rgba(165, 4, 84, 0.04)",
+                borderColor: "rgba(165, 4, 84, 0.22)",
+                display: {
+                  xs: "none",
+                  sm: "flex",
+                },
+                "& .MuiChip-icon": {
+                  fontSize: 19,
+                  color: "primary.main",
+                  ml: 0.8,
+                },
+                "& .MuiChip-label": {
+                  px: 1.1,
+                  fontSize: "0.82rem",
+                },
               }}
             />
 
@@ -449,7 +615,8 @@ const Dashboard = () => {
             "& .MuiDrawer-paper": {
               width: drawerWidth,
               boxSizing: "border-box",
-              borderRight: "1px solid #ececef",
+              borderRight: "1px solid rgba(15, 23, 42, 0.08)",
+              boxShadow: "0 20px 60px rgba(15, 23, 42, 0.18)",
             },
           }}
         >
@@ -464,7 +631,7 @@ const Dashboard = () => {
             "& .MuiDrawer-paper": {
               width: drawerWidth,
               boxSizing: "border-box",
-              borderRight: "1px solid #ececef",
+              borderRight: "1px solid rgba(15, 23, 42, 0.08)",
             },
           }}
         >
@@ -476,11 +643,25 @@ const Dashboard = () => {
         component="main"
         sx={{
           flexGrow: 1,
-          pt: "72px",
+          pt: {
+            xs: "66px",
+            md: "72px",
+          },
           minHeight: "100vh",
+          minWidth: 0,
         }}
       >
-        <Box sx={{ p: { xs: 2, md: 4 } }}>{renderSection()}</Box>
+        <Box
+          sx={{
+            p: {
+              xs: 2,
+              sm: 2.5,
+              md: 4,
+            },
+          }}
+        >
+          {renderSection()}
+        </Box>
       </Box>
     </Box>
   );

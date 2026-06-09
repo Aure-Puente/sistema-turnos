@@ -1,37 +1,39 @@
+//Importaciones:
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Box,
+  Button,
   Chip,
   CircularProgress,
   Divider,
+  FormControl,
+  InputLabel,
   MenuItem,
   Paper,
+  Select,
   Stack,
-  TextField,
   Typography,
 } from "@mui/material";
-
 import AssessmentRoundedIcon from "@mui/icons-material/AssessmentRounded";
 import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import PersonOffRoundedIcon from "@mui/icons-material/PersonOffRounded";
 import AccessTimeRoundedIcon from "@mui/icons-material/AccessTimeRounded";
 import PendingActionsRoundedIcon from "@mui/icons-material/PendingActionsRounded";
-
-import {
-  collection,
-  onSnapshot,
-  query,
-  where,
-} from "firebase/firestore";
-
+import FilterAltRoundedIcon from "@mui/icons-material/FilterAltRounded";
+import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import dayjs from "dayjs";
+import "dayjs/locale/es";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
 import {
   Bar,
   BarChart,
   CartesianGrid,
   Cell,
-  Legend,
   Line,
   LineChart,
   Pie,
@@ -41,11 +43,12 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-
-import dayjs from "dayjs";
 import { db } from "../../firebase/firebaseConfig";
 
-const COLORS = ["#a50454", "#16a34a", "#f59e0b", "#6b7280", "#2563eb"];
+//JSX:
+dayjs.locale("es");
+
+const COLORS = ["#a50454", "#16a34a", "#f59e0b", "#64748b", "#2563eb"];
 
 const estadoLabels = {
   esperando: "En espera",
@@ -86,10 +89,12 @@ const groupCount = (items, keyGetter) => {
     map[key] = (map[key] || 0) + 1;
   });
 
-  return Object.entries(map).map(([name, value]) => ({
-    name,
-    value,
-  }));
+  return Object.entries(map)
+    .map(([name, value]) => ({
+      name,
+      value,
+    }))
+    .sort((a, b) => b.value - a.value);
 };
 
 const groupAverage = (items, keyGetter, valueGetter) => {
@@ -112,11 +117,22 @@ const groupAverage = (items, keyGetter, valueGetter) => {
     map[key].count += 1;
   });
 
-  return Object.entries(map).map(([name, data]) => ({
-    name,
-    segundos: Math.round(data.total / data.count),
-    minutos: Number((data.total / data.count / 60).toFixed(1)),
-  }));
+  return Object.entries(map)
+    .map(([name, data]) => ({
+      name,
+      segundos: Math.round(data.total / data.count),
+      minutos: Number((data.total / data.count / 60).toFixed(1)),
+    }))
+    .sort((a, b) => b.minutos - a.minutos);
+};
+
+const getFechaKey = (date) => {
+  if (!date) return dayjs().format("YYYY-MM-DD");
+  return dayjs(date).format("YYYY-MM-DD");
+};
+
+const getConsultaLabel = (turno) => {
+  return turno.tipoConsultaLabel || turno.tipoConsulta || "Sin datos";
 };
 
 const StatCard = ({ icon, title, value, subtitle }) => {
@@ -124,36 +140,42 @@ const StatCard = ({ icon, title, value, subtitle }) => {
     <Paper
       elevation={0}
       sx={{
-        borderRadius: "22px",
-        border: "1px solid #ececef",
+        borderRadius: { xs: "20px", md: "22px" },
+        border: "1px solid rgba(15, 23, 42, 0.08)",
         backgroundColor: "#ffffff",
-        p: 2.5,
-        minHeight: 140,
+        boxShadow: "0 14px 34px rgba(15, 23, 42, 0.04)",
+        p: { xs: 2, md: 2.3 },
+        minHeight: { xs: 128, md: 138 },
       }}
     >
-      <Stack direction="row" spacing={2} alignItems="flex-start">
+      <Stack direction="row" spacing={1.7} alignItems="flex-start">
         <Box
           sx={{
-            width: 48,
-            height: 48,
+            width: 46,
+            height: 46,
             borderRadius: "16px",
-            backgroundColor: "rgba(165, 4, 84, 0.08)",
+            backgroundColor: "rgba(165, 4, 84, 0.075)",
             color: "primary.main",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            flexShrink: 0,
+            "& svg": {
+              fontSize: 26,
+            },
           }}
         >
           {icon}
         </Box>
 
-        <Box>
+        <Box sx={{ minWidth: 0 }}>
           <Typography
             sx={{
-              color: "#6b7280",
-              fontSize: "0.9rem",
-              fontWeight: 700,
-              mb: 0.5,
+              color: "#64748b",
+              fontSize: "0.86rem",
+              fontWeight: 650,
+              mb: 0.6,
+              lineHeight: 1.25,
             }}
           >
             {title}
@@ -162,9 +184,10 @@ const StatCard = ({ icon, title, value, subtitle }) => {
           <Typography
             sx={{
               color: "#111827",
-              fontSize: "2rem",
-              fontWeight: 950,
+              fontSize: { xs: "1.65rem", md: "1.75rem" },
+              fontWeight: 800,
               lineHeight: 1,
+              letterSpacing: "-0.6px",
             }}
           >
             {value}
@@ -173,9 +196,11 @@ const StatCard = ({ icon, title, value, subtitle }) => {
           {subtitle && (
             <Typography
               sx={{
-                color: "#6b7280",
-                fontSize: "0.85rem",
-                mt: 1,
+                color: "#64748b",
+                fontSize: "0.82rem",
+                mt: 0.9,
+                lineHeight: 1.35,
+                fontWeight: 500,
               }}
             >
               {subtitle}
@@ -192,39 +217,127 @@ const ChartCard = ({ title, subtitle, children }) => {
     <Paper
       elevation={0}
       sx={{
-        borderRadius: "24px",
-        border: "1px solid #ececef",
+        borderRadius: { xs: "22px", md: "26px" },
+        border: "1px solid rgba(15, 23, 42, 0.08)",
         backgroundColor: "#ffffff",
-        p: { xs: 2.5, md: 3 },
-        minHeight: 360,
+        boxShadow: "0 18px 45px rgba(15, 23, 42, 0.045)",
+        p: { xs: 2.2, sm: 2.6, md: 3 },
+        minHeight: { xs: 330, md: 360 },
+        display: "flex",
+        flexDirection: "column",
       }}
     >
-      <Typography
-        sx={{
-          color: "primary.main",
-          fontSize: "1.25rem",
-          fontWeight: 900,
-          mb: 0.5,
-        }}
-      >
-        {title}
-      </Typography>
-
-      {subtitle && (
+      <Box sx={{ mb: 2 }}>
         <Typography
           sx={{
-            color: "#6b7280",
-            fontSize: "0.9rem",
+            color: "#111827",
+            fontSize: { xs: "1.12rem", md: "1.25rem" },
+            fontWeight: 800,
+            letterSpacing: "-0.2px",
+          }}
+        >
+          {title}
+        </Typography>
+
+        {subtitle && (
+          <Typography
+            sx={{
+              color: "#64748b",
+              fontSize: "0.9rem",
+              mt: 0.4,
+              fontWeight: 500,
+              lineHeight: 1.4,
+            }}
+          >
+            {subtitle}
+          </Typography>
+        )}
+      </Box>
+
+      <Box sx={{ width: "100%", height: { xs: 245, md: 270 }, flex: 1 }}>
+        {children}
+      </Box>
+    </Paper>
+  );
+};
+
+const EmptyCard = ({ title, subtitle }) => {
+  return (
+    <Paper
+      elevation={0}
+      sx={{
+        borderRadius: "24px",
+        border: "1px solid rgba(15, 23, 42, 0.08)",
+        backgroundColor: "#ffffff",
+        minHeight: 280,
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        textAlign: "center",
+        p: 3,
+        boxShadow: "0 18px 45px rgba(15, 23, 42, 0.04)",
+      }}
+    >
+      <Box>
+        <Box
+          sx={{
+            width: 70,
+            height: 70,
+            borderRadius: "24px",
+            backgroundColor: "rgba(165, 4, 84, 0.07)",
+            color: "primary.main",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            mx: "auto",
             mb: 2,
+          }}
+        >
+          <AssessmentRoundedIcon sx={{ fontSize: 38 }} />
+        </Box>
+
+        <Typography
+          sx={{
+            color: "#111827",
+            fontWeight: 800,
+            fontSize: "1.2rem",
+          }}
+        >
+          {title}
+        </Typography>
+
+        <Typography
+          sx={{
+            color: "#64748b",
+            fontSize: "0.95rem",
+            fontWeight: 500,
+            mt: 0.7,
+            maxWidth: 420,
           }}
         >
           {subtitle}
         </Typography>
-      )}
-
-      <Box sx={{ width: "100%", height: 280 }}>{children}</Box>
+      </Box>
     </Paper>
   );
+};
+
+const selectSx = {
+  "& .MuiOutlinedInput-root": {
+    height: 46,
+    borderRadius: "16px",
+    backgroundColor: "#ffffff",
+  },
+  "& .MuiInputLabel-root": {
+    fontWeight: 600,
+    color: "#64748b",
+  },
+};
+
+const axisTick = {
+  fill: "#64748b",
+  fontSize: 12,
+  fontWeight: 500,
 };
 
 const InformesAdmin = () => {
@@ -232,21 +345,22 @@ const InformesAdmin = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const hoy = dayjs().format("YYYY-MM-DD");
-
+  const [fechaDesde, setFechaDesde] = useState(dayjs());
+  const [fechaHasta, setFechaHasta] = useState(dayjs());
   const [filters, setFilters] = useState({
-    fechaDesde: hoy,
-    fechaHasta: hoy,
     boxId: "TODOS",
     tipoConsulta: "TODOS",
     estado: "TODOS",
   });
 
+  const fechaDesdeKey = useMemo(() => getFechaKey(fechaDesde), [fechaDesde]);
+  const fechaHastaKey = useMemo(() => getFechaKey(fechaHasta), [fechaHasta]);
+
   useEffect(() => {
     const q = query(
       collection(db, "turnos"),
-      where("fechaKey", ">=", filters.fechaDesde),
-      where("fechaKey", "<=", filters.fechaHasta)
+      where("fechaKey", ">=", fechaDesdeKey),
+      where("fechaKey", "<=", fechaHastaKey)
     );
 
     const unsubscribe = onSnapshot(
@@ -268,7 +382,7 @@ const InformesAdmin = () => {
     );
 
     return () => unsubscribe();
-  }, [filters.fechaDesde, filters.fechaHasta]);
+  }, [fechaDesdeKey, fechaHastaKey]);
 
   const boxesOptions = useMemo(() => {
     const boxes = turnos
@@ -284,16 +398,14 @@ const InformesAdmin = () => {
       unique.set(box.boxId, box);
     });
 
-    return Array.from(unique.values());
+    return Array.from(unique.values()).sort((a, b) =>
+      String(a.boxNombre).localeCompare(String(b.boxNombre))
+    );
   }, [turnos]);
 
   const consultasOptions = useMemo(() => {
-    return Array.from(
-      new Set(
-        turnos
-          .map((turno) => turno.tipoConsultaLabel || turno.tipoConsulta)
-          .filter(Boolean)
-      )
+    return Array.from(new Set(turnos.map(getConsultaLabel).filter(Boolean))).sort(
+      (a, b) => a.localeCompare(b)
     );
   }, [turnos]);
 
@@ -304,7 +416,7 @@ const InformesAdmin = () => {
         turno.boxId === filters.boxId ||
         turno.boxNombre === filters.boxId;
 
-      const consulta = turno.tipoConsultaLabel || turno.tipoConsulta;
+      const consulta = getConsultaLabel(turno);
 
       const matchConsulta =
         filters.tipoConsulta === "TODOS" || consulta === filters.tipoConsulta;
@@ -316,17 +428,33 @@ const InformesAdmin = () => {
     });
   }, [turnos, filters]);
 
+  const filtrosActivos = useMemo(() => {
+    const hoy = dayjs().format("YYYY-MM-DD");
+
+    return (
+      fechaDesdeKey !== hoy ||
+      fechaHastaKey !== hoy ||
+      filters.boxId !== "TODOS" ||
+      filters.tipoConsulta !== "TODOS" ||
+      filters.estado !== "TODOS"
+    );
+  }, [fechaDesdeKey, fechaHastaKey, filters]);
+
   const stats = useMemo(() => {
     const total = turnosFiltrados.length;
+
     const finalizados = turnosFiltrados.filter(
       (turno) => turno.estado === "finalizado"
     ).length;
+
     const ausentes = turnosFiltrados.filter(
       (turno) => turno.estado === "ausente"
     ).length;
+
     const esperando = turnosFiltrados.filter(
       (turno) => turno.estado === "esperando"
     ).length;
+
     const activos = turnosFiltrados.filter((turno) =>
       ["llamado", "atendiendo"].includes(turno.estado)
     ).length;
@@ -351,7 +479,10 @@ const InformesAdmin = () => {
   }, [turnosFiltrados]);
 
   const estadosData = useMemo(() => {
-    return groupCount(turnosFiltrados, (turno) => estadoLabels[turno.estado] || turno.estado);
+    return groupCount(
+      turnosFiltrados,
+      (turno) => estadoLabels[turno.estado] || turno.estado || "Sin estado"
+    ).filter((item) => item.value > 0);
   }, [turnosFiltrados]);
 
   const turnosPorBoxData = useMemo(() => {
@@ -362,10 +493,7 @@ const InformesAdmin = () => {
   }, [turnosFiltrados]);
 
   const turnosPorConsultaData = useMemo(() => {
-    return groupCount(
-      turnosFiltrados,
-      (turno) => turno.tipoConsultaLabel || turno.tipoConsulta
-    );
+    return groupCount(turnosFiltrados, getConsultaLabel);
   }, [turnosFiltrados]);
 
   const turnosPorDiaData = useMemo(() => {
@@ -388,10 +516,12 @@ const InformesAdmin = () => {
   const tiempoEsperaPorConsultaData = useMemo(() => {
     return groupAverage(
       turnosFiltrados,
-      (turno) => turno.tipoConsultaLabel || turno.tipoConsulta,
+      getConsultaLabel,
       (turno) => turno.tiempoEsperaSegundos
     );
   }, [turnosFiltrados]);
+
+  const hasData = turnosFiltrados.length > 0;
 
   const handleFilterChange = (field, value) => {
     setFilters((prev) => ({
@@ -400,347 +530,673 @@ const InformesAdmin = () => {
     }));
   };
 
+  const handleQuitarFiltros = () => {
+    setFechaDesde(dayjs());
+    setFechaHasta(dayjs());
+    setFilters({
+      boxId: "TODOS",
+      tipoConsulta: "TODOS",
+      estado: "TODOS",
+    });
+  };
+
   return (
-    <Box>
-      <Stack
-        direction={{ xs: "column", md: "row" }}
-        justifyContent="space-between"
-        alignItems={{ xs: "flex-start", md: "center" }}
-        spacing={2}
-        sx={{ mb: 3 }}
-      >
-        <Box>
-          <Typography
-            sx={{
-              fontSize: { xs: "1.7rem", md: "2rem" },
-              fontWeight: 900,
-              color: "primary.main",
-              lineHeight: 1.1,
-            }}
-          >
-            Informes administrativos
-          </Typography>
-
-          <Typography sx={{ color: "#6b7280", mt: 0.8 }}>
-            Métricas generales de atención, tiempos, boxes, consultas y
-            ausencias.
-          </Typography>
-        </Box>
-
-        <Chip
-          icon={<AssessmentRoundedIcon />}
-          label={`${turnosFiltrados.length} turnos filtrados`}
-          color="primary"
-          variant="outlined"
-          sx={{ fontWeight: 800 }}
-        />
-      </Stack>
-
-      {error && (
-        <Alert severity="warning" sx={{ borderRadius: "14px", mb: 2 }}>
-          {error}
-        </Alert>
-      )}
-
-      <Paper
-        elevation={0}
+    <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="es">
+      <Box
         sx={{
-          borderRadius: "24px",
-          border: "1px solid #ececef",
-          backgroundColor: "#ffffff",
-          p: { xs: 2.5, md: 3 },
-          mb: 3,
+          width: "100%",
+          maxWidth: 1480,
+          mx: "auto",
         }}
       >
-        <Typography
-          sx={{
-            color: "primary.main",
-            fontWeight: 900,
-            fontSize: "1.2rem",
-            mb: 2,
-          }}
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          justifyContent="space-between"
+          alignItems={{ xs: "flex-start", md: "center" }}
+          spacing={2}
+          sx={{ mb: { xs: 2.5, md: 3 } }}
         >
-          Filtros
-        </Typography>
+          <Box sx={{ minWidth: 0 }}>
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              alignItems={{ xs: "flex-start", sm: "center" }}
+              spacing={1.2}
+            >
+              <Typography
+                sx={{
+                  fontSize: { xs: "1.55rem", sm: "1.7rem", md: "1.9rem" },
+                  fontWeight: 800,
+                  color: "#111827",
+                  lineHeight: 1.12,
+                  letterSpacing: "-0.7px",
+                }}
+              >
+                Informes administrativos
+              </Typography>
 
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: {
-              xs: "1fr",
-              sm: "repeat(2, 1fr)",
-              lg: "repeat(5, 1fr)",
-            },
-            gap: 2,
-          }}
-        >
-          <TextField
-            fullWidth
-            type="date"
-            label="Desde"
-            value={filters.fechaDesde}
-            onChange={(e) => handleFilterChange("fechaDesde", e.target.value)}
-            InputLabelProps={{ shrink: true }}
-          />
+              <Chip
+                icon={<AssessmentRoundedIcon />}
+                label={`${stats.total} turnos filtrados`}
+                variant="outlined"
+                sx={{
+                  height: 32,
+                  borderRadius: "999px",
+                  fontWeight: 700,
+                  color: stats.total > 0 ? "primary.main" : "#64748b",
+                  borderColor:
+                    stats.total > 0
+                      ? "rgba(165, 4, 84, 0.20)"
+                      : "rgba(15, 23, 42, 0.12)",
+                  backgroundColor:
+                    stats.total > 0 ? "rgba(165, 4, 84, 0.04)" : "#ffffff",
+                  "& .MuiChip-icon": {
+                    color: stats.total > 0 ? "primary.main" : "#64748b",
+                    fontSize: 17,
+                  },
+                }}
+              />
+            </Stack>
 
-          <TextField
-            fullWidth
-            type="date"
-            label="Hasta"
-            value={filters.fechaHasta}
-            onChange={(e) => handleFilterChange("fechaHasta", e.target.value)}
-            InputLabelProps={{ shrink: true }}
-          />
+            <Typography
+              sx={{
+                color: "#64748b",
+                mt: 0.7,
+                fontSize: { xs: "0.95rem", md: "1rem" },
+                fontWeight: 500,
+                lineHeight: 1.45,
+              }}
+            >
+              Métricas generales de atención, tiempos, boxes, consultas y
+              ausencias.
+            </Typography>
+          </Box>
+        </Stack>
 
-          <TextField
-            select
-            fullWidth
-            label="Box"
-            value={filters.boxId}
-            onChange={(e) => handleFilterChange("boxId", e.target.value)}
+        {error && (
+          <Alert
+            severity="warning"
+            sx={{
+              borderRadius: "18px",
+              mb: 2.5,
+              border: "1px solid rgba(245, 158, 11, 0.20)",
+              backgroundColor: "rgba(245, 158, 11, 0.08)",
+              color: "#78350f",
+              "& .MuiAlert-icon": {
+                color: "#d97706",
+              },
+            }}
           >
-            <MenuItem value="TODOS">Todos</MenuItem>
-            {boxesOptions.map((box) => (
-              <MenuItem key={box.boxId} value={box.boxId}>
-                {box.boxNombre}
-              </MenuItem>
-            ))}
-          </TextField>
+            {error}
+          </Alert>
+        )}
 
-          <TextField
-            select
-            fullWidth
-            label="Consulta"
-            value={filters.tipoConsulta}
-            onChange={(e) =>
-              handleFilterChange("tipoConsulta", e.target.value)
-            }
-          >
-            <MenuItem value="TODOS">Todas</MenuItem>
-            {consultasOptions.map((consulta) => (
-              <MenuItem key={consulta} value={consulta}>
-                {consulta}
-              </MenuItem>
-            ))}
-          </TextField>
-
-          <TextField
-            select
-            fullWidth
-            label="Estado"
-            value={filters.estado}
-            onChange={(e) => handleFilterChange("estado", e.target.value)}
-          >
-            <MenuItem value="TODOS">Todos</MenuItem>
-            <MenuItem value="esperando">En espera</MenuItem>
-            <MenuItem value="llamado">Llamado</MenuItem>
-            <MenuItem value="atendiendo">En atención</MenuItem>
-            <MenuItem value="finalizado">Finalizado</MenuItem>
-            <MenuItem value="ausente">Ausente</MenuItem>
-          </TextField>
-        </Box>
-      </Paper>
-
-      {loading ? (
         <Paper
           elevation={0}
           sx={{
-            borderRadius: "24px",
-            border: "1px solid #ececef",
+            borderRadius: { xs: "22px", md: "26px" },
+            border: "1px solid rgba(15, 23, 42, 0.08)",
             backgroundColor: "#ffffff",
-            minHeight: 360,
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
+            boxShadow: "0 18px 45px rgba(15, 23, 42, 0.04)",
+            p: { xs: 2.2, sm: 2.5, md: 2.8 },
+            mb: { xs: 2.4, md: 3 },
           }}
         >
-          <CircularProgress />
-        </Paper>
-      ) : (
-        <>
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: {
-                xs: "1fr",
-                sm: "repeat(2, 1fr)",
-                lg: "repeat(4, 1fr)",
-              },
-              gap: 2,
-              mb: 3,
-            }}
+          <Stack
+            direction={{ xs: "column", lg: "row" }}
+            justifyContent="space-between"
+            alignItems={{ xs: "stretch", lg: "center" }}
+            spacing={2}
           >
-            <StatCard
-              icon={<GroupsRoundedIcon />}
-              title="Turnos totales"
-              value={stats.total}
-              subtitle="Según filtros aplicados"
-            />
+            <Box sx={{ minWidth: 0 }}>
+              <Stack direction="row" spacing={1.2} alignItems="center">
+                <Box
+                  sx={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: "15px",
+                    backgroundColor: "rgba(165, 4, 84, 0.07)",
+                    color: "primary.main",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <FilterAltRoundedIcon sx={{ fontSize: 24 }} />
+                </Box>
 
-            <StatCard
-              icon={<CheckCircleRoundedIcon />}
-              title="Finalizados"
-              value={stats.finalizados}
-              subtitle="Personas atendidas"
-            />
-
-            <StatCard
-              icon={<PersonOffRoundedIcon />}
-              title="Ausentes"
-              value={stats.ausentes}
-              subtitle="Llamados que no se presentaron"
-            />
-
-            <StatCard
-              icon={<PendingActionsRoundedIcon />}
-              title="En espera / activos"
-              value={`${stats.esperando} / ${stats.activos}`}
-              subtitle="Esperando y llamados/en atención"
-            />
-
-            <StatCard
-              icon={<AccessTimeRoundedIcon />}
-              title="Espera promedio"
-              value={formatSeconds(stats.promedioEspera)}
-              subtitle="Desde creación hasta llamado"
-            />
-
-            <StatCard
-              icon={<AccessTimeRoundedIcon />}
-              title="Atención promedio"
-              value={formatSeconds(stats.promedioAtencion)}
-              subtitle="Desde inicio hasta finalización"
-            />
-          </Box>
-
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: {
-                xs: "1fr",
-                lg: "1fr 1fr",
-              },
-              gap: 3,
-            }}
-          >
-            <ChartCard
-              title="Estados de turnos"
-              subtitle="Distribución de turnos según su estado actual o final."
-            >
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={estadosData}
-                    dataKey="value"
-                    nameKey="name"
-                    outerRadius={95}
-                    label
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography
+                    sx={{
+                      color: "#111827",
+                      fontWeight: 800,
+                      fontSize: { xs: "1.08rem", md: "1.18rem" },
+                    }}
                   >
-                    {estadosData.map((entry, index) => (
-                      <Cell
-                        key={entry.name}
-                        fill={COLORS[index % COLORS.length]}
+                    Filtros
+                  </Typography>
+
+                  <Typography
+                    sx={{
+                      color: "#64748b",
+                      fontSize: "0.9rem",
+                      fontWeight: 500,
+                      mt: 0.2,
+                    }}
+                  >
+                    Definí el rango, box, consulta y estado.
+                  </Typography>
+                </Box>
+              </Stack>
+            </Box>
+
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: {
+                  xs: "1fr",
+                  sm: "repeat(2, minmax(0, 1fr))",
+                  lg: "repeat(6, minmax(0, 1fr))",
+                },
+                gap: 1.4,
+                width: {
+                  xs: "100%",
+                  lg: "min(100%, 920px)",
+                },
+              }}
+            >
+              <DatePicker
+                label="Desde"
+                value={fechaDesde}
+                onChange={(newValue) => setFechaDesde(newValue || dayjs())}
+                format="DD/MM/YYYY"
+                slotProps={{
+                  textField: {
+                    fullWidth: true,
+                    size: "small",
+                    sx: {
+                      minWidth: 0,
+                      "& .MuiOutlinedInput-root": {
+                        height: 46,
+                        borderRadius: "16px",
+                        backgroundColor: "#ffffff",
+                      },
+                      "& .MuiInputLabel-root": {
+                        fontWeight: 600,
+                        color: "#64748b",
+                      },
+                    },
+                  },
+                }}
+              />
+
+              <DatePicker
+                label="Hasta"
+                value={fechaHasta}
+                onChange={(newValue) => setFechaHasta(newValue || dayjs())}
+                format="DD/MM/YYYY"
+                slotProps={{
+                  textField: {
+                    fullWidth: true,
+                    size: "small",
+                    sx: {
+                      minWidth: 0,
+                      "& .MuiOutlinedInput-root": {
+                        height: 46,
+                        borderRadius: "16px",
+                        backgroundColor: "#ffffff",
+                      },
+                      "& .MuiInputLabel-root": {
+                        fontWeight: 600,
+                        color: "#64748b",
+                      },
+                    },
+                  },
+                }}
+              />
+
+              <FormControl fullWidth size="small" sx={selectSx}>
+                <InputLabel>Box</InputLabel>
+
+                <Select
+                  label="Box"
+                  value={filters.boxId}
+                  onChange={(e) => handleFilterChange("boxId", e.target.value)}
+                >
+                  <MenuItem value="TODOS">Todos</MenuItem>
+
+                  {boxesOptions.map((box) => (
+                    <MenuItem key={box.boxId} value={box.boxId}>
+                      {box.boxNombre}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <FormControl fullWidth size="small" sx={selectSx}>
+                <InputLabel>Consulta</InputLabel>
+
+                <Select
+                  label="Consulta"
+                  value={filters.tipoConsulta}
+                  onChange={(e) =>
+                    handleFilterChange("tipoConsulta", e.target.value)
+                  }
+                >
+                  <MenuItem value="TODOS">Todas</MenuItem>
+
+                  {consultasOptions.map((consulta) => (
+                    <MenuItem key={consulta} value={consulta}>
+                      {consulta}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <FormControl fullWidth size="small" sx={selectSx}>
+                <InputLabel>Estado</InputLabel>
+
+                <Select
+                  label="Estado"
+                  value={filters.estado}
+                  onChange={(e) => handleFilterChange("estado", e.target.value)}
+                >
+                  <MenuItem value="TODOS">Todos</MenuItem>
+                  <MenuItem value="esperando">En espera</MenuItem>
+                  <MenuItem value="llamado">Llamado</MenuItem>
+                  <MenuItem value="atendiendo">En atención</MenuItem>
+                  <MenuItem value="finalizado">Finalizado</MenuItem>
+                  <MenuItem value="ausente">Ausente</MenuItem>
+                </Select>
+              </FormControl>
+
+              <Button
+                variant="outlined"
+                startIcon={<RestartAltRoundedIcon />}
+                onClick={handleQuitarFiltros}
+                disabled={!filtrosActivos}
+                sx={{
+                  height: 46,
+                  borderRadius: "16px",
+                  px: 1.8,
+                  textTransform: "none",
+                  fontWeight: 750,
+                  whiteSpace: "nowrap",
+                  color: filtrosActivos ? "primary.main" : "#94a3b8",
+                  borderColor: filtrosActivos
+                    ? "rgba(165, 4, 84, 0.24)"
+                    : "rgba(15, 23, 42, 0.10)",
+                  backgroundColor: filtrosActivos
+                    ? "rgba(165, 4, 84, 0.035)"
+                    : "#ffffff",
+                  "&:hover": {
+                    borderColor: "primary.main",
+                    backgroundColor: "rgba(165, 4, 84, 0.06)",
+                  },
+                  "&.Mui-disabled": {
+                    color: "#94a3b8",
+                    borderColor: "rgba(15, 23, 42, 0.10)",
+                    backgroundColor: "#ffffff",
+                  },
+                }}
+              >
+                Quitar filtros
+              </Button>
+            </Box>
+          </Stack>
+        </Paper>
+
+        {loading ? (
+          <Paper
+            elevation={0}
+            sx={{
+              borderRadius: "24px",
+              border: "1px solid rgba(15, 23, 42, 0.08)",
+              backgroundColor: "#ffffff",
+              minHeight: 340,
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              boxShadow: "0 18px 45px rgba(15, 23, 42, 0.04)",
+            }}
+          >
+            <CircularProgress />
+          </Paper>
+        ) : (
+          <>
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: {
+                  xs: "1fr",
+                  sm: "repeat(2, minmax(0, 1fr))",
+                  lg: "repeat(3, minmax(0, 1fr))",
+                  xl: "repeat(6, minmax(0, 1fr))",
+                },
+                gap: { xs: 1.6, md: 2 },
+                mb: { xs: 2.4, md: 3 },
+              }}
+            >
+              <StatCard
+                icon={<GroupsRoundedIcon />}
+                title="Turnos totales"
+                value={stats.total}
+                subtitle="Según filtros aplicados"
+              />
+
+              <StatCard
+                icon={<CheckCircleRoundedIcon />}
+                title="Finalizados"
+                value={stats.finalizados}
+                subtitle="Personas atendidas"
+              />
+
+              <StatCard
+                icon={<PersonOffRoundedIcon />}
+                title="Ausentes"
+                value={stats.ausentes}
+                subtitle="No se presentaron"
+              />
+
+              <StatCard
+                icon={<PendingActionsRoundedIcon />}
+                title="Espera / activos"
+                value={`${stats.esperando} / ${stats.activos}`}
+                subtitle="Pendientes y en atención"
+              />
+
+              <StatCard
+                icon={<AccessTimeRoundedIcon />}
+                title="Espera promedio"
+                value={formatSeconds(stats.promedioEspera)}
+                subtitle="Hasta el llamado"
+              />
+
+              <StatCard
+                icon={<AccessTimeRoundedIcon />}
+                title="Atención promedio"
+                value={formatSeconds(stats.promedioAtencion)}
+                subtitle="Duración promedio"
+              />
+            </Box>
+
+            {!hasData ? (
+              <EmptyCard
+                title="No hay datos para estos filtros"
+                subtitle="Probá modificando el rango de fechas, el box, la consulta o el estado."
+              />
+            ) : (
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: {
+                    xs: "1fr",
+                    lg: "repeat(2, minmax(0, 1fr))",
+                  },
+                  gap: { xs: 2, md: 3 },
+                }}
+              >
+                <ChartCard
+                  title="Estados de turnos"
+                  subtitle="Distribución según estado actual o final."
+                >
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={estadosData}
+                        dataKey="value"
+                        nameKey="name"
+                        outerRadius={88}
+                        innerRadius={48}
+                        paddingAngle={3}
+                      >
+                        {estadosData.map((entry, index) => (
+                          <Cell
+                            key={entry.name}
+                            fill={COLORS[index % COLORS.length]}
+                          />
+                        ))}
+                      </Pie>
+
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </ChartCard>
+
+                <ChartCard
+                  title="Turnos por box"
+                  subtitle="Cantidad de turnos gestionados por cada box."
+                >
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={turnosPorBoxData}>
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="rgba(100, 116, 139, 0.18)"
+                        vertical={false}
                       />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </ChartCard>
 
-            <ChartCard
-              title="Turnos por box"
-              subtitle="Cantidad de turnos gestionados por cada box."
-            >
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={turnosPorBoxData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis allowDecimals={false} />
-                  <Tooltip />
-                  <Bar dataKey="value" name="Turnos" fill="#a50454" />
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartCard>
+                      <XAxis
+                        dataKey="name"
+                        tick={axisTick}
+                        tickLine={false}
+                        axisLine={{ stroke: "rgba(100, 116, 139, 0.22)" }}
+                        interval={0}
+                        angle={turnosPorBoxData.length > 3 ? -14 : 0}
+                        textAnchor={
+                          turnosPorBoxData.length > 3 ? "end" : "middle"
+                        }
+                        height={turnosPorBoxData.length > 3 ? 58 : 34}
+                      />
 
-            <ChartCard
-              title="Consultas más frecuentes"
-              subtitle="Cantidad de turnos por tipo de consulta."
-            >
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={turnosPorConsultaData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis allowDecimals={false} />
-                  <Tooltip />
-                  <Bar dataKey="value" name="Turnos" fill="#a50454" />
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartCard>
+                      <YAxis
+                        allowDecimals={false}
+                        tick={axisTick}
+                        tickLine={false}
+                        axisLine={false}
+                      />
 
-            <ChartCard
-              title="Turnos por día"
-              subtitle="Evolución diaria dentro del rango seleccionado."
-            >
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={turnosPorDiaData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="fecha" />
-                  <YAxis allowDecimals={false} />
-                  <Tooltip />
-                  <Line
-                    type="monotone"
-                    dataKey="turnos"
-                    name="Turnos"
-                    stroke="#a50454"
-                    strokeWidth={3}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </ChartCard>
+                      <Tooltip />
 
-            <ChartCard
-              title="Tiempo promedio de atención por box"
-              subtitle="Promedio en minutos por cada box."
-            >
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={tiempoAtencionPorBoxData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar
-                    dataKey="minutos"
-                    name="Minutos promedio"
-                    fill="#a50454"
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartCard>
+                      <Bar
+                        dataKey="value"
+                        name="Turnos"
+                        fill="#a50454"
+                        radius={[10, 10, 0, 0]}
+                        maxBarSize={56}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </ChartCard>
 
-            <ChartCard
-              title="Espera promedio por consulta"
-              subtitle="Tiempo promedio de espera antes del llamado."
-            >
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={tiempoEsperaPorConsultaData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar
-                    dataKey="minutos"
-                    name="Minutos promedio"
-                    fill="#a50454"
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartCard>
-          </Box>
-        </>
-      )}
-    </Box>
+                <ChartCard
+                  title="Consultas más frecuentes"
+                  subtitle="Cantidad de turnos por tipo de consulta."
+                >
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={turnosPorConsultaData}>
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="rgba(100, 116, 139, 0.18)"
+                        vertical={false}
+                      />
+
+                      <XAxis
+                        dataKey="name"
+                        tick={axisTick}
+                        tickLine={false}
+                        axisLine={{ stroke: "rgba(100, 116, 139, 0.22)" }}
+                        interval={0}
+                        angle={turnosPorConsultaData.length > 3 ? -14 : 0}
+                        textAnchor={
+                          turnosPorConsultaData.length > 3 ? "end" : "middle"
+                        }
+                        height={turnosPorConsultaData.length > 3 ? 58 : 34}
+                      />
+
+                      <YAxis
+                        allowDecimals={false}
+                        tick={axisTick}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+
+                      <Tooltip />
+
+                      <Bar
+                        dataKey="value"
+                        name="Turnos"
+                        fill="#a50454"
+                        radius={[10, 10, 0, 0]}
+                        maxBarSize={56}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </ChartCard>
+
+                <ChartCard
+                  title="Turnos por día"
+                  subtitle="Evolución diaria dentro del rango seleccionado."
+                >
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={turnosPorDiaData}>
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="rgba(100, 116, 139, 0.18)"
+                        vertical={false}
+                      />
+
+                      <XAxis
+                        dataKey="fecha"
+                        tick={axisTick}
+                        tickLine={false}
+                        axisLine={{ stroke: "rgba(100, 116, 139, 0.22)" }}
+                      />
+
+                      <YAxis
+                        allowDecimals={false}
+                        tick={axisTick}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+
+                      <Tooltip />
+
+                      <Line
+                        type="monotone"
+                        dataKey="turnos"
+                        name="Turnos"
+                        stroke="#a50454"
+                        strokeWidth={3}
+                        dot={{
+                          r: 4,
+                          fill: "#a50454",
+                          strokeWidth: 0,
+                        }}
+                        activeDot={{
+                          r: 6,
+                        }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </ChartCard>
+
+                <ChartCard
+                  title="Tiempo de atención por box"
+                  subtitle="Promedio en minutos por cada box."
+                >
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={tiempoAtencionPorBoxData}>
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="rgba(100, 116, 139, 0.18)"
+                        vertical={false}
+                      />
+
+                      <XAxis
+                        dataKey="name"
+                        tick={axisTick}
+                        tickLine={false}
+                        axisLine={{ stroke: "rgba(100, 116, 139, 0.22)" }}
+                        interval={0}
+                        angle={tiempoAtencionPorBoxData.length > 3 ? -14 : 0}
+                        textAnchor={
+                          tiempoAtencionPorBoxData.length > 3
+                            ? "end"
+                            : "middle"
+                        }
+                        height={tiempoAtencionPorBoxData.length > 3 ? 58 : 34}
+                      />
+
+                      <YAxis
+                        tick={axisTick}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+
+                      <Tooltip />
+
+                      <Bar
+                        dataKey="minutos"
+                        name="Minutos promedio"
+                        fill="#a50454"
+                        radius={[10, 10, 0, 0]}
+                        maxBarSize={56}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </ChartCard>
+
+                <ChartCard
+                  title="Espera promedio por consulta"
+                  subtitle="Tiempo promedio antes del llamado."
+                >
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={tiempoEsperaPorConsultaData}>
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="rgba(100, 116, 139, 0.18)"
+                        vertical={false}
+                      />
+
+                      <XAxis
+                        dataKey="name"
+                        tick={axisTick}
+                        tickLine={false}
+                        axisLine={{ stroke: "rgba(100, 116, 139, 0.22)" }}
+                        interval={0}
+                        angle={tiempoEsperaPorConsultaData.length > 3 ? -14 : 0}
+                        textAnchor={
+                          tiempoEsperaPorConsultaData.length > 3
+                            ? "end"
+                            : "middle"
+                        }
+                        height={tiempoEsperaPorConsultaData.length > 3 ? 58 : 34}
+                      />
+
+                      <YAxis
+                        tick={axisTick}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+
+                      <Tooltip />
+
+                      <Bar
+                        dataKey="minutos"
+                        name="Minutos promedio"
+                        fill="#a50454"
+                        radius={[10, 10, 0, 0]}
+                        maxBarSize={56}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </ChartCard>
+              </Box>
+            )}
+          </>
+        )}
+      </Box>
+    </LocalizationProvider>
   );
 };
 

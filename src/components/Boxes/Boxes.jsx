@@ -14,11 +14,24 @@ import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
 import CampaignRoundedIcon from "@mui/icons-material/CampaignRounded";
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
+import PauseCircleRoundedIcon from "@mui/icons-material/PauseCircleRounded";
 
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "../../firebase/firebaseConfig";
 
 const getEstadoBox = (box, turnosActivos) => {
+  if (box.estadoBox === "PAUSA") {
+    return {
+      label: "En pausa",
+      color: "warning",
+      bg: "#fff7ed",
+      border: "#fed7aa",
+      icon: <PauseCircleRoundedIcon />,
+      turno: null,
+      description: "El operador pausó la atención.",
+    };
+  }
+
   const turno = turnosActivos.find((t) => t.boxId === box.boxId);
 
   if (!turno) {
@@ -29,6 +42,7 @@ const getEstadoBox = (box, turnosActivos) => {
       border: "#bbf7d0",
       icon: <CheckCircleRoundedIcon />,
       turno: null,
+      description: "Sin turno activo en este momento.",
     };
   }
 
@@ -40,6 +54,7 @@ const getEstadoBox = (box, turnosActivos) => {
       border: "rgba(165, 4, 84, 0.18)",
       icon: <PlayArrowRoundedIcon />,
       turno,
+      description: "Atendiendo un turno actualmente.",
     };
   }
 
@@ -50,6 +65,7 @@ const getEstadoBox = (box, turnosActivos) => {
     border: "#fed7aa",
     icon: <CampaignRoundedIcon />,
     turno,
+    description: "El turno fue llamado y está pendiente de atención.",
   };
 };
 
@@ -248,8 +264,15 @@ const Boxes = () => {
                       {box.boxNombre || "Box sin nombre"}
                     </Typography>
 
-                    <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
-                      <PersonRoundedIcon sx={{ fontSize: 20, color: "#6b7280" }} />
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      alignItems="center"
+                      sx={{ mt: 1 }}
+                    >
+                      <PersonRoundedIcon
+                        sx={{ fontSize: 20, color: "#6b7280" }}
+                      />
 
                       <Typography
                         sx={{
@@ -311,11 +334,11 @@ const Boxes = () => {
                   <Typography
                     sx={{
                       mt: 2.5,
-                      color: "#6b7280",
+                      color: box.estadoBox === "PAUSA" ? "#92400e" : "#6b7280",
                       fontWeight: 700,
                     }}
                   >
-                    Sin turno activo en este momento.
+                    {estado.description}
                   </Typography>
                 )}
               </Paper>
