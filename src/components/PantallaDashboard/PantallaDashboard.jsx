@@ -7,15 +7,15 @@ import {
   Chip,
   CircularProgress,
   Stack,
-  Alert,
   Divider,
 } from "@mui/material";
+
 import TvRoundedIcon from "@mui/icons-material/TvRounded";
 import CampaignRoundedIcon from "@mui/icons-material/CampaignRounded";
 import BadgeRoundedIcon from "@mui/icons-material/BadgeRounded";
 import PersonOffRoundedIcon from "@mui/icons-material/PersonOffRounded";
 import ConfirmationNumberRoundedIcon from "@mui/icons-material/ConfirmationNumberRounded";
-import AccessTimeRoundedIcon from "@mui/icons-material/AccessTimeRounded";
+
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "../../firebase/firebaseConfig";
 
@@ -102,16 +102,21 @@ const PantallaDashboard = () => {
     return () => unsubscribe();
   }, []);
 
-  const turnoPrincipal =
-    turnosLlamados.find(
-      (turno) => turno.estado === "llamado" || turno.estado === "atendiendo"
-    ) || null;
+  const turnosActivos = useMemo(() => {
+    return turnosLlamados
+      .filter(
+        (turno) => turno.estado === "llamado" || turno.estado === "atendiendo"
+      )
+      .slice(0, 6);
+  }, [turnosLlamados]);
 
   const ultimosTurnos = useMemo(() => {
     return turnosLlamados
-      .filter((turno) => turno.id !== turnoPrincipal?.id)
+      .filter(
+        (turno) => !turnosActivos.some((activo) => activo.id === turno.id)
+      )
       .slice(0, 5);
-  }, [turnosLlamados, turnoPrincipal]);
+  }, [turnosLlamados, turnosActivos]);
 
   const proximosTurnos = useMemo(
     () => turnosEsperando.slice(0, 5),
@@ -153,18 +158,26 @@ const PantallaDashboard = () => {
   const EmptyState = ({ icon, title, subtitle }) => (
     <Box
       sx={{
+        flex: 1,
         borderRadius: "22px",
         backgroundColor: "#f8fafc",
         border: "1px solid rgba(15, 23, 42, 0.07)",
         p: { xs: 2.4, md: 3 },
-        minHeight: 150,
+
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
+
         textAlign: "center",
+
+        minHeight: 300,
+        maxWidth: 620,
+        width: "100%",
+
+        mx: "auto",
       }}
-    >
+      >
       <Box
         sx={{
           width: 64,
@@ -233,7 +246,12 @@ const PantallaDashboard = () => {
           gap: 1.5,
         }}
       >
-        <Stack direction="row" alignItems="center" spacing={1.4} sx={{ minWidth: 0 }}>
+        <Stack
+          direction="row"
+          alignItems="center"
+          spacing={1.4}
+          sx={{ minWidth: 0 }}
+        >
           <Box
             sx={{
               width: 42,
@@ -256,7 +274,11 @@ const PantallaDashboard = () => {
           <Box sx={{ minWidth: 0 }}>
             <Typography
               sx={{
-                color: isAusente ? "#92400e" : isNext ? "primary.main" : "#111827",
+                color: isAusente
+                  ? "#92400e"
+                  : isNext
+                  ? "primary.main"
+                  : "#111827",
                 fontSize: { xs: "1.3rem", md: "1.48rem" },
                 fontWeight: 800,
                 lineHeight: 1,
@@ -343,6 +365,101 @@ const PantallaDashboard = () => {
     );
   };
 
+  const TurnoActivoCard = ({ turno }) => {
+    const estadoStyle = getEstadoStyles(turno.estado);
+    const atendiendo = turno.estado === "atendiendo";
+
+    return (
+      <Box
+        sx={{
+          borderRadius: "22px",
+          border: atendiendo
+            ? "1px solid rgba(22, 163, 74, 0.25)"
+            : "1px solid rgba(165, 4, 84, 0.18)",
+          backgroundColor: atendiendo
+            ? "rgba(22, 163, 74, 0.055)"
+            : "rgba(165, 4, 84, 0.045)",
+          p: { xs: 2, md: 2.4 },
+          textAlign: "center",
+          minHeight: 210,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+        }}
+      >
+        <Typography
+          sx={{
+            color: "primary.main",
+            fontSize: { xs: "3.2rem", md: "4.2rem" },
+            fontWeight: 850,
+            lineHeight: 0.95,
+            letterSpacing: "-2px",
+          }}
+        >
+          {turno.numero}
+        </Typography>
+
+        <Stack
+          direction="row"
+          spacing={0.8}
+          alignItems="center"
+          justifyContent="center"
+          sx={{ mt: 1.6, color: "#64748b" }}
+        >
+          <BadgeRoundedIcon sx={{ fontSize: 19 }} />
+
+          <Typography
+            sx={{
+              color: "#475569",
+              fontSize: "0.95rem",
+              fontWeight: 700,
+            }}
+          >
+            DNI {turno.dni || "-"}
+          </Typography>
+        </Stack>
+
+        <Typography
+          sx={{
+            color: "#111827",
+            fontSize: { xs: "1.15rem", md: "1.35rem" },
+            fontWeight: 850,
+            mt: 1.4,
+            lineHeight: 1.15,
+          }}
+        >
+          {turno.boxNombre || "Box asignado"}
+        </Typography>
+
+        <Typography
+          noWrap
+          sx={{
+            color: "#64748b",
+            fontSize: "0.9rem",
+            mt: 0.6,
+            fontWeight: 500,
+          }}
+        >
+          {turno.tipoConsultaLabel || "Consulta"}
+        </Typography>
+
+        <Chip
+          label={getEstadoLabel(turno.estado)}
+          variant="outlined"
+          sx={{
+            mt: 1.6,
+            height: 30,
+            px: 1,
+            borderRadius: "999px",
+            fontWeight: 700,
+            alignSelf: "center",
+            ...estadoStyle,
+          }}
+        />
+      </Box>
+    );
+  };
+
   return (
     <Box
       sx={{
@@ -400,6 +517,25 @@ const PantallaDashboard = () => {
                 color: "primary.main",
                 fontSize: 18,
               },
+            }}
+          />
+
+          <Chip
+            label={`${turnosActivos.length} activos`}
+            variant="outlined"
+            sx={{
+              height: 34,
+              borderRadius: "999px",
+              fontWeight: 700,
+              color: turnosActivos.length > 0 ? "primary.main" : "#64748b",
+              borderColor:
+                turnosActivos.length > 0
+                  ? "rgba(165, 4, 84, 0.20)"
+                  : "rgba(15, 23, 42, 0.12)",
+              backgroundColor:
+                turnosActivos.length > 0
+                  ? "rgba(165, 4, 84, 0.04)"
+                  : "#ffffff",
             }}
           />
 
@@ -468,7 +604,7 @@ const PantallaDashboard = () => {
                   letterSpacing: "-0.3px",
                 }}
               >
-                Turno actual
+                Turnos activos
               </Typography>
 
               <Typography
@@ -480,7 +616,7 @@ const PantallaDashboard = () => {
                   lineHeight: 1.45,
                 }}
               >
-                Último turno activo mostrado en la pantalla principal.
+                Turnos llamados o en atención en este momento.
               </Typography>
             </Box>
 
@@ -503,104 +639,45 @@ const PantallaDashboard = () => {
 
           <Divider sx={{ borderColor: "rgba(15, 23, 42, 0.08)", mb: 2.5 }} />
 
-          <Box
-            sx={{
-              flex: 1,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            {loadingLlamados ? (
+          {loadingLlamados ? (
+            <Box
+              sx={{
+                flex: 1,
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                minHeight: 260,
+              }}
+            >
               <CircularProgress />
-            ) : turnoPrincipal ? (
-              <Box sx={{ textAlign: "center", width: "100%" }}>
-                <Typography
-                  sx={{
-                    color: "primary.main",
-                    fontSize: {
-                      xs: "4rem",
-                      sm: "4.8rem",
-                      md: "5.6rem",
-                      xl: "6.1rem",
-                    },
-                    fontWeight: 800,
-                    lineHeight: 0.95,
-                    letterSpacing: { xs: "-2px", md: "-4px" },
-                  }}
-                >
-                  {turnoPrincipal.numero}
-                </Typography>
-
-                <Stack
-                  direction="row"
-                  spacing={1}
-                  alignItems="center"
-                  justifyContent="center"
-                  sx={{
-                    mt: 1.8,
-                    color: "#64748b",
-                  }}
-                >
-                  <BadgeRoundedIcon sx={{ fontSize: 21 }} />
-
-                  <Typography
-                    sx={{
-                      color: "#475569",
-                      fontSize: { xs: "0.98rem", md: "1.05rem" },
-                      fontWeight: 650,
-                    }}
-                  >
-                    DNI {turnoPrincipal.dni || "-"}
-                  </Typography>
-                </Stack>
-
-                <Typography
-                  sx={{
-                    color: "#111827",
-                    fontSize: { xs: "1.45rem", md: "1.85rem" },
-                    fontWeight: 800,
-                    mt: 1.8,
-                    lineHeight: 1.15,
-                    letterSpacing: "-0.4px",
-                  }}
-                >
-                  {turnoPrincipal.boxNombre || "Box asignado"}
-                </Typography>
-
-                <Typography
-                  sx={{
-                    color: "#64748b",
-                    fontSize: { xs: "0.95rem", md: "1rem" },
-                    mt: 0.8,
-                    fontWeight: 500,
-                  }}
-                >
-                  {turnoPrincipal.tipoConsultaLabel || "Consulta"}
-                </Typography>
-
-                <Chip
-                  label={getEstadoLabel(turnoPrincipal.estado)}
-                  variant="outlined"
-                  sx={{
-                    mt: 2.4,
-                    height: 34,
-                    px: 1,
-                    borderRadius: "999px",
-                    fontWeight: 700,
-                    fontSize: "0.88rem",
-                    ...getEstadoStyles(turnoPrincipal.estado),
-                  }}
-                />
-              </Box>
-            ) : (
-              <EmptyState
-                icon={<TvRoundedIcon sx={{ fontSize: 38 }} />}
-                title="Aguardando llamados"
-                subtitle="Cuando un box llame a un turno, aparecerá automáticamente en esta vista."
-              />
-            )}
-          </Box>
+            </Box>
+          ) : turnosActivos.length === 0 ? (
+            <EmptyState
+              icon={<TvRoundedIcon sx={{ fontSize: 38 }} />}
+              title="Aguardando llamados"
+              subtitle="Cuando un box llame a un turno, aparecerá automáticamente en esta vista."
+            />
+          ) : (
+            <Box
+              sx={{
+                flex: 1,
+                display: "grid",
+                gridTemplateColumns:
+                  turnosActivos.length === 1
+                    ? "1fr"
+                    : {
+                        xs: "1fr",
+                        sm: "repeat(2, 1fr)",
+                      },
+                gap: 1.6,
+                alignContent: "center",
+              }}
+            >
+              {turnosActivos.map((turno) => (
+                <TurnoActivoCard key={turno.id} turno={turno} />
+              ))}
+            </Box>
+          )}
         </Paper>
 
         <Stack spacing={{ xs: 2, md: 2.5 }}>
@@ -676,13 +753,7 @@ const PantallaDashboard = () => {
                   textAlign: "center",
                 }}
               >
-                <Typography
-                  sx={{
-                    color: "#111827",
-                    fontWeight: 750,
-                    mb: 0.5,
-                  }}
-                >
+                <Typography sx={{ color: "#111827", fontWeight: 750, mb: 0.5 }}>
                   Sin llamados recientes
                 </Typography>
 
@@ -788,13 +859,7 @@ const PantallaDashboard = () => {
                   textAlign: "center",
                 }}
               >
-                <Typography
-                  sx={{
-                    color: "#111827",
-                    fontWeight: 750,
-                    mb: 0.5,
-                  }}
-                >
+                <Typography sx={{ color: "#111827", fontWeight: 750, mb: 0.5 }}>
                   No hay turnos esperando
                 </Typography>
 

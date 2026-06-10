@@ -27,6 +27,7 @@ import {
   getDocs,
   onSnapshot,
   query,
+  runTransaction,
   updateDoc,
   where,
 } from "firebase/firestore";
@@ -196,21 +197,61 @@ const Turnos = () => {
         );
       });
 
-      const turnoDoc = turnosOrdenados[0];
-      const turno = turnoDoc.data();
-      const ahora = new Date();
+      let turnoTomado = false;
 
-      const tiempoEsperaSegundos = calcularSegundos(turno.createdAtDate, ahora);
+      for (const turnoDoc of turnosOrdenados) {
+        const turnoRef = doc(db, "turnos", turnoDoc.id);
 
-      await updateDoc(doc(db, "turnos", turnoDoc.id), {
-        estado: "llamado",
-        boxId,
-        boxNombre,
-        operadorId,
-        operadorNombre,
-        llamadoAt: ahora.toISOString(),
-        tiempoEsperaSegundos,
-      });
+        try {
+          await runTransaction(db, async (transaction) => {
+            const turnoSnap = await transaction.get(turnoRef);
+
+            if (!turnoSnap.exists()) {
+              throw new Error("TURNO_NO_DISPONIBLE");
+            }
+
+            const turno = turnoSnap.data();
+
+            if (turno.estado !== "esperando") {
+              throw new Error("TURNO_NO_DISPONIBLE");
+            }
+
+            if (turno.fechaKey !== hoy) {
+              throw new Error("TURNO_NO_DISPONIBLE");
+            }
+
+            const ahora = new Date();
+
+            const tiempoEsperaSegundos = calcularSegundos(
+              turno.createdAtDate,
+              ahora
+            );
+
+            transaction.update(turnoRef, {
+              estado: "llamado",
+              boxId,
+              boxNombre,
+              operadorId,
+              operadorNombre,
+              llamadoAt: ahora.toISOString(),
+              tiempoEsperaSegundos,
+            });
+          });
+
+          turnoTomado = true;
+          break;
+        } catch (error) {
+          if (error.message === "TURNO_NO_DISPONIBLE") {
+            continue;
+          }
+
+          throw error;
+        }
+      }
+
+      if (!turnoTomado) {
+        setError("Otro box tomó el turno primero. Intentá llamar nuevamente.");
+      }
     } catch (error) {
       console.error("Error llamando siguiente turno:", error);
       setError("No se pudo llamar al siguiente turno.");
@@ -524,12 +565,7 @@ const Turnos = () => {
             <Divider sx={{ borderColor: "rgba(15, 23, 42, 0.08)" }} />
 
             {turnoActual ? (
-              <Box
-                sx={{
-                  textAlign: "center",
-                  py: { xs: 1, md: 1.5 },
-                }}
-              >
+              <Box sx={{ textAlign: "center", py: { xs: 1, md: 1.5 } }}>
                 <Typography
                   sx={{
                     color: "primary.main",
@@ -800,11 +836,7 @@ const Turnos = () => {
                   variant="outlined"
                   color={enPausa ? "success" : "warning"}
                   startIcon={
-                    enPausa ? (
-                      <RestartAltRoundedIcon />
-                    ) : (
-                      <PauseCircleRoundedIcon />
-                    )
+                    enPausa ? <RestartAltRoundedIcon /> : <PauseCircleRoundedIcon />
                   }
                   onClick={handleTogglePausa}
                   disabled={accionLoading || Boolean(turnoActual)}
@@ -911,13 +943,7 @@ const Turnos = () => {
                 textAlign: "center",
               }}
             >
-              <Typography
-                sx={{
-                  color: "#111827",
-                  fontWeight: 750,
-                  mb: 0.5,
-                }}
-              >
+              <Typography sx={{ color: "#111827", fontWeight: 750, mb: 0.5 }}>
                 No hay turnos esperando
               </Typography>
 
